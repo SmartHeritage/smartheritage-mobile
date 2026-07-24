@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../data/mock_data.dart';
+import '../../services/location_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 import '../artifact/artifact_detail_screen.dart';
 
-/// Bản đồ khu di tích (minh hoạ) với các điểm hiện vật.
+/// Bản đồ khu di tích thật (OpenStreetMap) + định vị GPS người dùng.
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -14,91 +20,194 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const LatLng _siteCenter = LatLng(MockData.siteLat, MockData.siteLng);
+
+  final MapController _mapController = MapController();
   Artifact? _selected;
+  Position? _userPos;
+  StreamSubscription<Position>? _posSub;
+  bool _locating = false;
+  String _zone = 'Tất cả';
+
+  static const _zones = [
+    'Tất cả',
+    'Khu trưng bày A',
+    'Khu trưng bày B',
+    'Khu trưng bày C',
+    'Sân ngoài trời',
+  ];
+
+  List<Artifact> get _visibleArtifacts => _zone == 'Tất cả'
+      ? MockData.artifacts
+      : MockData.artifacts.where((a) => a.zone == _zone).toList();
+
+  @override
+  void dispose() {
+    _posSub?.cancel();
+    super.dispose();
+  }
+
+  /// Xin quyền → lấy vị trí → di chuyển bản đồ tới chỗ người dùng, rồi theo dõi liên tục.
+  Future<void> _locateMe() async {
+    setState(() => _locating = true);
+    final status = await LocationService.ensurePermission();
+    if (!mounted) return;
+
+    if (status != LocationStatus.granted) {
+      setState(() => _locating = false);
+      _showLocationMessage(status);
+      return;
+    }
+
+    try {
+      final pos = await LocationService.current();
+      if (!mounted) return;
+      setState(() {
+        _userPos = pos;
+        _locating = false;
+      });
+      _mapController.move(LatLng(pos.latitude, pos.longitude), 17);
+      _posSub ??= LocationService.stream().listen((p) {
+        if (mounted) setState(() => _userPos = p);
+      });
+    } catch (_) {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  void _showLocationMessage(LocationStatus status) {
+    final msg = switch (status) {
+      LocationStatus.serviceDisabled =>
+        'Vui lòng bật GPS/Vị trí trên thiết bị rồi thử lại.',
+      LocationStatus.deniedForever =>
+        'Quyền vị trí đang bị chặn. Hãy bật lại trong Cài đặt của máy.',
+      _ => 'Ứng dụng cần quyền vị trí để định vị bạn trên bản đồ.',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bản đồ tham quan'),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.layers_outlined, color: AppColors.primary),
-          ),
-        ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          // 1) Nền bản đồ thật (tiles OpenStreetMap)
+          FlutterMap(
+            mapController: _mapController,
+            options: const MapOptions(
+              initialCenter: _siteCenter,
+              initialZoom: 17,
+              minZoom: 3,
+              maxZoom: 19,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.smartheritage.smartheritage',
+              ),
+
+              // 3) Vòng độ chính xác + chấm vị trí người dùng
+              if (_userPos != null) ...[
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: LatLng(_userPos!.latitude, _userPos!.longitude),
+                      radius: _userPos!.accuracy,
+                      useRadiusInMeter: true,
+                      color: AppColors.accent.withValues(alpha: 0.15),
+                      borderColor: AppColors.accent.withValues(alpha: 0.4),
+                      borderStrokeWidth: 1,
+                    ),
+                  ],
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(_userPos!.latitude, _userPos!.longitude),
+                      width: 80,
+                      height: 80,
+                      child: const RadarPulse(size: 80),
+                    ),
+                  ],
+                ),
+              ],
+
+              // 2) Ghim các hiện vật
+              MarkerLayer(
+                markers: [
+                  for (final artifact in _visibleArtifacts)
+                    Marker(
+                      point: LatLng(artifact.lat, artifact.lng),
+                      width: 52,
+                      height: 52,
+                      child: _MapPin(
+                        artifact: artifact,
+                        selected: _selected?.id == artifact.id,
+                        onTap: () {
+                          setState(() => _selected = artifact);
+                          _mapController.move(
+                            LatLng(artifact.lat, artifact.lng),
+                            _mapController.camera.zoom,
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+
+          // Thanh lọc khu vực (nổi phía trên)
+          Positioned(
+            top: 12,
+            left: 0,
+            right: 0,
             child: SizedBox(
               height: 40,
               child: ListView(
                 scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  _zoneChip('Tất cả', selected: true),
-                  _zoneChip('Khu trưng bày A'),
-                  _zoneChip('Khu trưng bày B'),
-                  _zoneChip('Khu trưng bày C'),
-                  _zoneChip('Sân ngoài trời'),
+                  for (final zone in _zones)
+                    _zoneChip(zone, selected: _zone == zone),
                 ],
               ),
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
-                      children: [
-                        // Nền bản đồ minh hoạ
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _MapBackgroundPainter(),
-                          ),
-                        ),
-                        // Vị trí hiện tại của khách
-                        Positioned(
-                          left: constraints.maxWidth * 0.48 - 40,
-                          top: constraints.maxHeight * 0.45 - 40,
-                          child: const RadarPulse(size: 80),
-                        ),
-                        // Các điểm hiện vật
-                        for (final artifact in MockData.artifacts)
-                          Positioned(
-                            left: constraints.maxWidth * artifact.mapX - 22,
-                            top: constraints.maxHeight * artifact.mapY - 44,
-                            child: _MapPin(
-                              artifact: artifact,
-                              selected: _selected?.id == artifact.id,
-                              onTap: () =>
-                                  setState(() => _selected = artifact),
-                            ),
-                          ),
-                        // Thẻ thông tin hiện vật được chọn
-                        if (_selected != null)
-                          Positioned(
-                            left: 12,
-                            right: 12,
-                            bottom: 12,
-                            child: _MapArtifactCard(
-                              artifact: _selected!,
-                              onClose: () =>
-                                  setState(() => _selected = null),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
+
+          // Thẻ thông tin hiện vật đang chọn
+          if (_selected != null)
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: _MapArtifactCard(
+                artifact: _selected!,
+                userPos: _userPos,
+                onClose: () => setState(() => _selected = null),
               ),
             ),
-          ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _locating ? null : _locateMe,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        child: _locating
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.my_location),
       ),
     );
   }
@@ -109,7 +218,13 @@ class _MapScreenState extends State<MapScreen> {
       child: ChoiceChip(
         label: Text(label),
         selected: selected,
-        onSelected: (_) {},
+        onSelected: (_) => setState(() {
+          _zone = label;
+          if (_selected != null && _selected!.zone != label && label != 'Tất cả') {
+            _selected = null;
+          }
+        }),
+        backgroundColor: Colors.white,
         labelStyle: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
@@ -135,53 +250,60 @@ class _MapPin extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: selected ? 48 : 44,
-            height: selected ? 48 : 44,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: selected ? Colors.white : AppColors.primary,
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Icon(
-              artifact.icon,
-              size: 22,
-              color: selected ? Colors.white : AppColors.primary,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: selected ? 50 : 44,
+        height: selected ? 50 : 44,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? Colors.white : AppColors.primary,
+            width: 2,
           ),
-          Container(
-            width: 3,
-            height: 10,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : Colors.white,
-              borderRadius: BorderRadius.circular(2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Icon(
+          artifact.icon,
+          size: 22,
+          color: selected ? Colors.white : AppColors.primary,
+        ),
       ),
     );
   }
 }
 
 class _MapArtifactCard extends StatelessWidget {
-  const _MapArtifactCard({required this.artifact, required this.onClose});
+  const _MapArtifactCard({
+    required this.artifact,
+    required this.userPos,
+    required this.onClose,
+  });
 
   final Artifact artifact;
+  final Position? userPos;
   final VoidCallback onClose;
+
+  /// Chuỗi khoảng cách từ người dùng tới hiện vật (nếu đã có GPS).
+  String get _distanceLabel {
+    if (userPos == null) return artifact.zone;
+    final meters = LocationService.distanceMeters(
+      userPos!.latitude,
+      userPos!.longitude,
+      artifact.lat,
+      artifact.lng,
+    );
+    final dist = meters < 1000
+        ? '${meters.round()}m'
+        : '${(meters / 1000).toStringAsFixed(1)}km';
+    return '${artifact.zone} · cách bạn ~$dist';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +343,7 @@ class _MapArtifactCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${artifact.zone} · cách bạn ~35m',
+                      _distanceLabel,
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: AppColors.textSecondary,
@@ -254,8 +376,7 @@ class _MapArtifactCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () =>
-                      Navigator.of(context).push(MaterialPageRoute(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => ArtifactDetailScreen(artifact: artifact),
                   )),
                   style: ElevatedButton.styleFrom(
@@ -272,65 +393,4 @@ class _MapArtifactCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Vẽ nền bản đồ minh hoạ: nền xanh nhạt, lối đi, khu trưng bày.
-class _MapBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bg = Paint()..color = AppColors.surfaceTint;
-    canvas.drawRect(Offset.zero & size, bg);
-
-    // Các khu trưng bày (khối nhạt)
-    final block = Paint()..color = const Color(0xFFEADBCF);
-    final blocks = [
-      Rect.fromLTWH(size.width * 0.08, size.height * 0.10, size.width * 0.34,
-          size.height * 0.28),
-      Rect.fromLTWH(size.width * 0.55, size.height * 0.08, size.width * 0.36,
-          size.height * 0.22),
-      Rect.fromLTWH(size.width * 0.12, size.height * 0.52, size.width * 0.30,
-          size.height * 0.26),
-      Rect.fromLTWH(size.width * 0.58, size.height * 0.44, size.width * 0.32,
-          size.height * 0.24),
-    ];
-    for (final rect in blocks) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(16)),
-        block,
-      );
-    }
-
-    // Lối đi
-    final path = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 14
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final walkway = Path()
-      ..moveTo(size.width * 0.48, size.height)
-      ..lineTo(size.width * 0.48, size.height * 0.45)
-      ..lineTo(size.width * 0.26, size.height * 0.32)
-      ..moveTo(size.width * 0.48, size.height * 0.45)
-      ..lineTo(size.width * 0.66, size.height * 0.24)
-      ..moveTo(size.width * 0.48, size.height * 0.45)
-      ..lineTo(size.width * 0.36, size.height * 0.62)
-      ..moveTo(size.width * 0.48, size.height * 0.45)
-      ..lineTo(size.width * 0.74, size.height * 0.56);
-    canvas.drawPath(walkway, path);
-
-    // Cây xanh trang trí
-    final tree = Paint()..color = const Color(0xFFB7D8C3);
-    final treeSpots = [
-      Offset(size.width * 0.90, size.height * 0.86),
-      Offset(size.width * 0.10, size.height * 0.90),
-      Offset(size.width * 0.88, size.height * 0.36),
-      Offset(size.width * 0.06, size.height * 0.44),
-    ];
-    for (final spot in treeSpots) {
-      canvas.drawCircle(spot, 14, tree);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

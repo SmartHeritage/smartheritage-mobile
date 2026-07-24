@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Tải ô ảnh bản đồ OpenStreetMap từ internet -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Định vị GPS người dùng trên bản đồ -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="Smart Heritage"
         android:name="${applicationName}"

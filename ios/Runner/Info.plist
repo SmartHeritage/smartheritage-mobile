@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần vị trí của bạn để hiển thị bạn đang đứng ở đâu trên bản đồ khu di tích và tính khoảng cách tới các hiện vật.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Smart Heritage</string>
 	<key>CFBundleExecutable</key>

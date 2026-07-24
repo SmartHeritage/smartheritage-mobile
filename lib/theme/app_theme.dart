@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// Bảng màu chủ đạo: trắng + xanh lá tối.
+/// Bảng màu chủ đạo: trắng + nâu đỏ (theo logo di sản).
 class AppColors {
   AppColors._();
 
-  static const Color primary = Color(0xFF1B4332); // xanh lá tối
-  static const Color primaryDark = Color(0xFF081C15);
-  static const Color primaryLight = Color(0xFF2D6A4F);
-  static const Color accent = Color(0xFF40916C);
-  static const Color mint = Color(0xFF74C69D);
-  static const Color surfaceTint = Color(0xFFF0F7F2); // trắng phớt xanh
+  static const Color primary = Color(0xFF8C2B21); // nâu đỏ
+  static const Color primaryDark = Color(0xFF5E1A13);
+  static const Color primaryLight = Color(0xFFB24435);
+  static const Color accent = Color(0xFFD99A4E); // vàng kim điểm nhấn
+  static const Color mint = Color(0xFFE7C08A); // vàng nhạt
+  static const Color surfaceTint = Color(0xFFFBF1EC); // trắng phớt nâu đỏ
   static const Color background = Colors.white;
-  static const Color textPrimary = Color(0xFF1B2B24);
-  static const Color textSecondary = Color(0xFF5C6F66);
-  static const Color divider = Color(0xFFE3EDE7);
+  static const Color textPrimary = Color(0xFF2A1714);
+  static const Color textSecondary = Color(0xFF7A625C);
+  static const Color divider = Color(0xFFEEE0DA);
   static const Color warning = Color(0xFFE9A23B);
-  static const Color danger = Color(0xFFD64545);
+  static const Color danger = Color(0xFFC0392B);
 }
 
 class AppTheme {

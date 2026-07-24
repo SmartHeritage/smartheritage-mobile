@@ -282,7 +282,7 @@ class _MapBackgroundPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, bg);
 
     // Các khu trưng bày (khối nhạt)
-    final block = Paint()..color = const Color(0xFFDBEAE0);
+    final block = Paint()..color = const Color(0xFFEADBCF);
     final blocks = [
       Rect.fromLTWH(size.width * 0.08, size.height * 0.10, size.width * 0.34,
           size.height * 0.28),

@@ -15,6 +15,7 @@ class Artifact {
     required this.reviewCount,
     required this.audioDuration,
     required this.videoDuration,
+    this.imageUrl,
     this.mapX = 0.5,
     this.mapY = 0.5,
   });
@@ -31,6 +32,9 @@ class Artifact {
   final int reviewCount;
   final String audioDuration;
   final String videoDuration;
+
+  /// Ảnh thật của hiện vật (điền link khi có; null → dùng ảnh placeholder).
+  final String? imageUrl;
 
   /// Vị trí tương đối trên bản đồ minh hoạ (0..1).
   final double mapX;
@@ -66,7 +70,7 @@ class MockData {
           'cộng đồng, thể hiện đời sống tinh thần phong phú và tín ngưỡng thờ '
           'mặt trời của người Việt cổ cách đây hơn 2.000 năm.',
       icon: Icons.album_outlined,
-      gradient: [Color(0xFF1B4332), Color(0xFF40916C)],
+      gradient: [Color(0xFF8C2B21), Color(0xFFC1613C)],
       rating: 4.8,
       reviewCount: 236,
       audioDuration: '03:45',
@@ -86,7 +90,7 @@ class MockData {
           'núm hình rồng cuộn tinh xảo, thể hiện đỉnh cao nghệ thuật kim hoàn '
           'cung đình Huế thế kỷ XIX.',
       icon: Icons.workspace_premium_outlined,
-      gradient: [Color(0xFF2D6A4F), Color(0xFF74C69D)],
+      gradient: [Color(0xFFB24435), Color(0xFFE7C08A)],
       rating: 4.7,
       reviewCount: 189,
       audioDuration: '04:20',
@@ -106,7 +110,7 @@ class MockData {
           'dân tộc. Đường nét mềm mại, cân đối của pho tượng đạt đến trình độ '
           'thẩm mỹ mẫu mực trong lịch sử mỹ thuật Việt Nam.',
       icon: Icons.self_improvement_outlined,
-      gradient: [Color(0xFF081C15), Color(0xFF2D6A4F)],
+      gradient: [Color(0xFF5E1A13), Color(0xFFB24435)],
       rating: 4.9,
       reviewCount: 312,
       audioDuration: '05:10',
@@ -126,7 +130,7 @@ class MockData {
           'các đề tài dân gian gần gũi, phản ánh tinh thần phóng khoáng, khoẻ '
           'khoắn của nghệ thuật Đại Việt.',
       icon: Icons.emoji_food_beverage_outlined,
-      gradient: [Color(0xFF40916C), Color(0xFF95D5B2)],
+      gradient: [Color(0xFFA8481F), Color(0xFFD99A4E)],
       rating: 4.5,
       reviewCount: 98,
       audioDuration: '02:55',
@@ -146,7 +150,7 @@ class MockData {
           'văn ghi rõ niên đại, trọng lượng, là tư liệu quý về kỹ thuật quân sự '
           'và nghệ thuật đúc đồng thế kỷ XIX.',
       icon: Icons.security_outlined,
-      gradient: [Color(0xFF1B4332), Color(0xFF52B788)],
+      gradient: [Color(0xFF8C2B21), Color(0xFFD98E5A)],
       rating: 4.3,
       reviewCount: 74,
       audioDuration: '03:15',

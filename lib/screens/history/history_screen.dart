@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
+import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 
@@ -9,63 +10,75 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Nhóm lịch sử theo ngày.
-    final grouped = <String, List<VisitRecord>>{};
-    for (final record in MockData.visitHistory) {
-      grouped.putIfAbsent(record.dateLabel, () => []).add(record);
-    }
-
+    final store = VisitHistoryController.instance;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lịch sử tham quan'),
         actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+          ListenableBuilder(
+            listenable: store,
+            builder: (context, _) => IconButton(
+              onPressed: store.isEmpty ? null : () => _confirmClear(context),
+              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+            ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        children: [
-          _buildSummary(),
-          const SizedBox(height: 20),
-          for (final entry in grouped.entries) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 16, color: AppColors.accent),
-                  const SizedBox(width: 8),
-                  Text(
-                    entry.key,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
+      body: ListenableBuilder(
+        listenable: store,
+        builder: (context, _) {
+          final records = store.records;
+          if (records.isEmpty) return const _EmptyHistory();
+
+          // Nhóm theo ngày (giữ thứ tự mới nhất trước).
+          final grouped = <String, List<VisitRecord>>{};
+          for (final record in records) {
+            grouped.putIfAbsent(record.dateLabel, () => []).add(record);
+          }
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            children: [
+              _buildSummary(store),
+              const SizedBox(height: 20),
+              for (final entry in grouped.entries) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined,
+                          size: 16, color: AppColors.accent),
+                      const SizedBox(width: 8),
+                      Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                for (final record in entry.value) ...[
+                  ArtifactListTile(
+                    artifact: record.artifact,
+                    subtitle: 'iBeacon phát hiện lúc ${record.timeLabel}',
+                    trailing: const Icon(Icons.chevron_right,
+                        color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
                 ],
-              ),
-            ),
-            for (final record in entry.value) ...[
-              ArtifactListTile(
-                artifact: record.artifact,
-                subtitle: 'Đã xem lúc ${record.timeLabel}',
-                trailing: const Icon(Icons.chevron_right,
-                    color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 8),
+              ],
             ],
-            const SizedBox(height: 8),
-          ],
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSummary() {
+  Widget _buildSummary(VisitHistoryController store) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -78,11 +91,11 @@ class HistoryScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _stat('5', 'Hiện vật\nđã xem'),
+          _stat('${store.artifactCount}', 'Hiện vật\nđã gặp'),
           _verticalDivider(),
-          _stat('3', 'Lần\ntham quan'),
+          _stat('${store.records.length}', 'Lượt\nphát hiện'),
           _verticalDivider(),
-          _stat('2', 'Khu vực\nđã ghé'),
+          _stat('${store.zoneCount}', 'Khu vực\nđã ghé'),
         ],
       ),
     );
@@ -120,6 +133,74 @@ class HistoryScreen extends StatelessWidget {
       width: 1,
       height: 44,
       color: Colors.white.withValues(alpha: 0.25),
+    );
+  }
+
+  void _confirmClear(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Xoá lịch sử'),
+        content: const Text('Xoá toàn bộ lịch sử tham quan trên thiết bị này?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Huỷ'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              VisitHistoryController.instance.clear();
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceTint,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.bluetooth_searching,
+                  size: 44, color: AppColors.accent),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Chưa có lịch sử tham quan',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Khi bạn đến gần một hiện vật, iBeacon sẽ\ntự động ghi lại vào đây',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

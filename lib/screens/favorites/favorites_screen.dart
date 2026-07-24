@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
+import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 
@@ -11,7 +12,25 @@ class FavoritesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Hiện vật yêu thích')),
-      body: ValueListenableBuilder<Set<String>>(
+      body: ListenableBuilder(
+        listenable: AuthController.instance,
+        builder: (context, _) {
+          if (!AuthController.instance.isLoggedIn) {
+            return _LoginPrompt(
+              icon: Icons.favorite_border,
+              title: 'Đăng nhập để lưu yêu thích',
+              message:
+                  'Đăng nhập để lưu và đồng bộ các hiện vật\nyêu thích của bạn trên mọi thiết bị',
+            );
+          }
+          return _buildList();
+        },
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    return ValueListenableBuilder<Set<String>>(
         valueListenable: FavoriteStore.ids,
         builder: (context, ids, _) {
           final favorites =
@@ -59,6 +78,68 @@ class FavoritesScreen extends StatelessWidget {
                 ArtifactListTile(artifact: favorites[i]),
           );
         },
+    );
+  }
+}
+
+/// Trạng thái mời đăng nhập cho các tính năng lưu dữ liệu.
+class _LoginPrompt extends StatelessWidget {
+  const _LoginPrompt({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceTint,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 44, color: AppColors.accent),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => AuthController.ensureLoggedIn(context),
+                icon: const Icon(Icons.login, size: 20),
+                label: const Text('Đăng nhập / Đăng ký'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
 import '../screens/artifact/artifact_detail_screen.dart';
+import '../state/auth_state.dart';
 import '../theme/app_theme.dart';
 
 /// Ảnh đại diện hiện vật (placeholder gradient + icon).
@@ -37,6 +38,65 @@ class ArtifactThumb extends StatelessWidget {
   }
 }
 
+/// Ảnh hiện vật khổ lớn (dùng cho card ngang màn hình).
+///
+/// Hiển thị [Artifact.imageUrl] khi có; nếu chưa có ảnh thật thì dùng
+/// placeholder gradient + icon (sẽ "up ảnh sau").
+class ArtifactImage extends StatelessWidget {
+  const ArtifactImage({
+    super.key,
+    required this.artifact,
+    this.height = 190,
+  });
+
+  final Artifact artifact;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = artifact.imageUrl;
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stack) => _placeholder(),
+      );
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: artifact.gradient,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(artifact.icon, color: Colors.white, size: 60),
+          const SizedBox(height: 8),
+          Text(
+            'Ảnh cập nhật sau',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Nút yêu thích đồng bộ với [FavoriteStore].
 class FavoriteButton extends StatelessWidget {
   const FavoriteButton({
@@ -55,12 +115,16 @@ class FavoriteButton extends StatelessWidget {
       builder: (context, ids, _) {
         final isFav = ids.contains(artifactId);
         return IconButton(
-          onPressed: () {
+          onPressed: () async {
+            // Yêu thích là dữ liệu theo dõi → yêu cầu đăng nhập.
+            final ok = await AuthController.ensureLoggedIn(context);
+            if (!ok || !context.mounted) return;
+            final wasFav = FavoriteStore.isFavorite(artifactId);
             FavoriteStore.toggle(artifactId);
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(SnackBar(
-                content: Text(isFav
+                content: Text(wasFav
                     ? 'Đã xoá khỏi danh sách yêu thích'
                     : 'Đã lưu vào danh sách yêu thích'),
                 duration: const Duration(seconds: 1),

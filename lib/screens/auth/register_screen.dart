@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../main_shell.dart';
 
@@ -23,10 +24,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ));
       return;
     }
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const MainShell()),
-      (route) => false,
-    );
+    AuthController.instance.login();
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      // Quay về màn trước đó (cổng đăng nhập / hồ sơ), giờ đã đăng nhập.
+      navigator.popUntil((route) => route.isFirst);
+    } else {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainShell()),
+        (route) => false,
+      );
+    }
   }
 
   @override

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
-import '../auth/login_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../history/history_screen.dart';
 import 'edit_profile_screen.dart';
@@ -14,38 +14,46 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Tài khoản của tôi')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        children: [
-          _buildProfileCard(context),
-          const SizedBox(height: 24),
-          _sectionLabel('Cá nhân'),
-          _menuItem(
-            context,
-            icon: Icons.person_outline,
-            title: 'Chỉnh sửa thông tin cá nhân',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-            ),
-          ),
-          _menuItem(
-            context,
-            icon: Icons.translate,
-            title: 'Ngôn ngữ',
-            trailingText: 'Tiếng Việt',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LanguageScreen()),
-            ),
-          ),
-          _menuItem(
-            context,
-            icon: Icons.history,
-            title: 'Lịch sử tham quan',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const HistoryScreen()),
-            ),
-          ),
-          const SizedBox(height: 16),
+      body: ListenableBuilder(
+        listenable: AuthController.instance,
+        builder: (context, _) {
+          final isLoggedIn = AuthController.instance.isLoggedIn;
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+            children: [
+              _buildProfileCard(context),
+              const SizedBox(height: 24),
+              _sectionLabel('Cá nhân'),
+              _menuItem(
+                context,
+                icon: Icons.person_outline,
+                title: 'Chỉnh sửa thông tin cá nhân',
+                onTap: () async {
+                  if (!await AuthController.ensureLoggedIn(context)) return;
+                  if (!context.mounted) return;
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                  );
+                },
+              ),
+              _menuItem(
+                context,
+                icon: Icons.translate,
+                title: 'Ngôn ngữ',
+                trailingText: 'Tiếng Việt',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LanguageScreen()),
+                ),
+              ),
+              _menuItem(
+                context,
+                icon: Icons.history,
+                title: 'Lịch sử tham quan',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                ),
+              ),
+              const SizedBox(height: 16),
           _sectionLabel('Hỗ trợ'),
           _menuItem(
             context,
@@ -78,22 +86,27 @@ class ProfileScreen extends StatelessWidget {
             trailingText: 'v1.0.0',
             onTap: () {},
           ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () => _confirmLogout(context),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.danger,
-              side: const BorderSide(color: AppColors.danger, width: 1.2),
-            ),
-            icon: const Icon(Icons.logout, size: 20),
-            label: const Text('Đăng xuất'),
-          ),
-        ],
+              const SizedBox(height: 24),
+              if (isLoggedIn)
+                OutlinedButton.icon(
+                  onPressed: () => _confirmLogout(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(
+                        color: AppColors.danger, width: 1.2),
+                  ),
+                  icon: const Icon(Icons.logout, size: 20),
+                  label: const Text('Đăng xuất'),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildProfileCard(BuildContext context) {
+    final auth = AuthController.instance;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -118,55 +131,103 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Lê Nhật Anh',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'lenhatanh2411@gmail.com',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.workspace_premium,
-                          size: 14, color: Color(0xFFFFD97D)),
-                      SizedBox(width: 4),
-                      Text(
-                        'Nhà thám hiểm di sản',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: auth.isLoggedIn
+                ? _loggedInInfo(auth)
+                : _guestInfo(context),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _loggedInInfo(AuthController auth) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          auth.name,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          auth.email,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.workspace_premium,
+                  size: 14, color: Color(0xFFFFD97D)),
+              SizedBox(width: 4),
+              Text(
+                'Nhà thám hiểm di sản',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _guestInfo(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Khách',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          'Đăng nhập để đồng bộ lịch sử & yêu thích',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: () => AuthController.ensureLoggedIn(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'Đăng nhập / Đăng ký',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -263,10 +324,8 @@ class ProfileScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
+              // Đăng xuất về chế độ khách, vẫn ở trong app.
+              AuthController.instance.logout();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Đăng xuất'),

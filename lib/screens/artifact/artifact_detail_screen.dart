@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
+import '../../state/audio_player_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 import '../feedback/feedback_screen.dart';
 
 class ArtifactDetailScreen extends StatefulWidget {
-  const ArtifactDetailScreen({super.key, required this.artifact});
+  const ArtifactDetailScreen({
+    super.key,
+    required this.artifact,
+    this.initialTabIndex = 0,
+  });
 
   final Artifact artifact;
+  final int initialTabIndex;
 
   @override
   State<ArtifactDetailScreen> createState() => _ArtifactDetailScreenState();
@@ -16,8 +22,11 @@ class ArtifactDetailScreen extends StatefulWidget {
 
 class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController =
-      TabController(length: 4, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 4,
+    vsync: this,
+    initialIndex: widget.initialTabIndex,
+  );
 
   @override
   void dispose() {
@@ -402,121 +411,152 @@ class _AudioTab extends StatefulWidget {
 }
 
 class _AudioTabState extends State<_AudioTab> {
-  bool _playing = false;
-  double _progress = 0.35;
   double _speed = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Bắt đầu phát ngay khi mở tab, đồng bộ với thanh mini-player toàn app.
+    if (AudioPlayerController.instance.artifact?.id != widget.artifact.id) {
+      AudioPlayerController.instance.play(widget.artifact);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final artifact = widget.artifact;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-      children: [
-        Center(child: ArtifactThumb(artifact: artifact, size: 150, radius: 32)),
-        const SizedBox(height: 20),
-        Center(
-          child: Text(
-            'Thuyết minh âm thanh',
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Center(
-          child: Text(
-            '${artifact.name} · Tiếng Việt',
-            style:
-                const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
-          ),
-        ),
-        const SizedBox(height: 24),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppColors.primary,
-            inactiveTrackColor: AppColors.divider,
-            thumbColor: AppColors.primary,
-            trackHeight: 4,
-          ),
-          child: Slider(
-            value: _progress,
-            onChanged: (v) => setState(() => _progress = v),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('01:19',
-                  style: TextStyle(
-                      fontSize: 12.5, color: AppColors.textSecondary)),
-              Text(artifact.audioDuration,
-                  style: const TextStyle(
-                      fontSize: 12.5, color: AppColors.textSecondary)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+    final controller = AudioPlayerController.instance;
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final playing = controller.artifact?.id == artifact.id &&
+            controller.isPlaying;
+        final progress =
+            controller.artifact?.id == artifact.id ? controller.progress : 0.0;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
           children: [
-            IconButton(
-              iconSize: 34,
-              color: AppColors.textPrimary,
-              onPressed: () {},
-              icon: const Icon(Icons.replay_10_rounded),
-            ),
-            const SizedBox(width: 16),
-            GestureDetector(
-              onTap: () => setState(() => _playing = !_playing),
-              child: Container(
-                width: 72,
-                height: 72,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.accent],
-                  ),
-                ),
-                child: Icon(
-                  _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 40,
+            Center(
+                child: ArtifactThumb(artifact: artifact, size: 150, radius: 32)),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
+                'Thuyết minh âm thanh',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            IconButton(
-              iconSize: 34,
-              color: AppColors.textPrimary,
-              onPressed: () {},
-              icon: const Icon(Icons.forward_10_rounded),
+            const SizedBox(height: 4),
+            Center(
+              child: Text(
+                '${artifact.name} · Tiếng Việt',
+                style: const TextStyle(
+                    fontSize: 13.5, color: AppColors.textSecondary),
+              ),
             ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Center(
-          child: Wrap(
-            spacing: 10,
-            children: [
-              for (final speed in [0.75, 1.0, 1.25, 1.5])
-                ChoiceChip(
-                  label: Text('${speed}x'),
-                  selected: _speed == speed,
-                  onSelected: (_) => setState(() => _speed = speed),
-                  labelStyle: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _speed == speed ? Colors.white : AppColors.textPrimary,
+            const SizedBox(height: 24),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: AppColors.primary,
+                inactiveTrackColor: AppColors.divider,
+                thumbColor: AppColors.primary,
+                trackHeight: 4,
+              ),
+              child: Slider(
+                value: progress,
+                onChanged: (v) {
+                  if (controller.artifact?.id != artifact.id) {
+                    controller.play(artifact);
+                  }
+                  controller.seek(v);
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('00:00',
+                      style: TextStyle(
+                          fontSize: 12.5, color: AppColors.textSecondary)),
+                  Text(artifact.audioDuration,
+                      style: const TextStyle(
+                          fontSize: 12.5, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  iconSize: 34,
+                  color: AppColors.textPrimary,
+                  onPressed: () => controller.seek(controller.progress - 0.05),
+                  icon: const Icon(Icons.replay_10_rounded),
+                ),
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: () {
+                    if (controller.artifact?.id != artifact.id) {
+                      controller.play(artifact);
+                    } else {
+                      controller.togglePlay();
+                    }
+                  },
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary, AppColors.accent],
+                      ),
+                    ),
+                    child: Icon(
+                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 40,
+                    ),
                   ),
                 ),
-            ],
-          ),
-        ),
-      ],
+                const SizedBox(width: 16),
+                IconButton(
+                  iconSize: 34,
+                  color: AppColors.textPrimary,
+                  onPressed: () => controller.seek(controller.progress + 0.05),
+                  icon: const Icon(Icons.forward_10_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Wrap(
+                spacing: 10,
+                children: [
+                  for (final speed in [0.75, 1.0, 1.25, 1.5])
+                    ChoiceChip(
+                      label: Text('${speed}x'),
+                      selected: _speed == speed,
+                      onSelected: (_) => setState(() => _speed = speed),
+                      labelStyle: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _speed == speed
+                            ? Colors.white
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

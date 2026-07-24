@@ -56,6 +56,9 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   adaptive_icon_background: "#8C2B21"
   adaptive_icon_foreground: "assets/images/app_icon_fg.png"
+  # Lề an toàn đã được nhúng sẵn trong app_icon_fg.png (logo ~72%),
+  # nên tắt inset mặc định (16%) để logo không bị co nhỏ thêm.
+  adaptive_icon_foreground_inset: 0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

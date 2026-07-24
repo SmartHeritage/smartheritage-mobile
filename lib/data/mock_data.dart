@@ -16,8 +16,14 @@ class Artifact {
     required this.audioDuration,
     required this.videoDuration,
     this.imageUrl,
+    this.imageAsset,
+    this.detailImageAsset,
+    this.imageAlignment = Alignment.center,
+    this.detailImageAlignment = Alignment.center,
     this.mapX = 0.5,
     this.mapY = 0.5,
+    this.lat = MockData.siteLat,
+    this.lng = MockData.siteLng,
   });
 
   final String id;
@@ -36,9 +42,27 @@ class Artifact {
   /// Ảnh thật của hiện vật (điền link khi có; null → dùng ảnh placeholder).
   final String? imageUrl;
 
-  /// Vị trí tương đối trên bản đồ minh hoạ (0..1).
+  /// Ảnh thật đóng gói sẵn trong app (đường dẫn asset). Ưu tiên hơn [imageUrl].
+  /// Dùng cho thumbnail và ảnh thường.
+  final String? imageAsset;
+
+  /// Ảnh khổ lớn dùng riêng cho phần hero ở trang chi tiết.
+  /// Nếu null → dùng tạm [imageAsset].
+  final String? detailImageAsset;
+
+  /// Căn khung riêng cho ảnh hero trang chi tiết. y = -1 lấy phần trên.
+  final Alignment detailImageAlignment;
+
+  /// Căn khung khi cắt ảnh (BoxFit.cover). y = -1 lấy phần trên, +1 lấy phần dưới.
+  final Alignment imageAlignment;
+
+  /// Vị trí tương đối trên bản đồ minh hoạ (0..1). (giữ lại cho tương thích cũ)
   final double mapX;
   final double mapY;
+
+  /// Toạ độ địa lý thật của hiện vật (dùng cho bản đồ OpenStreetMap).
+  final double lat;
+  final double lng;
 }
 
 class VisitRecord {
@@ -56,6 +80,11 @@ class VisitRecord {
 class MockData {
   MockData._();
 
+  /// Tâm khu di tích (ví dụ: Hoàng thành Thăng Long, Hà Nội).
+  /// Đổi 2 giá trị này sang toạ độ khu di tích thật của bạn khi có.
+  static const double siteLat = 21.0354;
+  static const double siteLng = 105.8402;
+
   static const artifacts = <Artifact>[
     Artifact(
       id: 'a1',
@@ -71,12 +100,15 @@ class MockData {
           'mặt trời của người Việt cổ cách đây hơn 2.000 năm.',
       icon: Icons.album_outlined,
       gradient: [Color(0xFF8C2B21), Color(0xFFC1613C)],
+      imageAsset: 'assets/images/trong_dong_dong_son.jpg',
       rating: 4.8,
       reviewCount: 236,
       audioDuration: '03:45',
       videoDuration: '02:10',
       mapX: 0.26,
       mapY: 0.30,
+      lat: 21.03565,
+      lng: 105.83980,
     ),
     Artifact(
       id: 'a2',
@@ -91,12 +123,17 @@ class MockData {
           'cung đình Huế thế kỷ XIX.',
       icon: Icons.workspace_premium_outlined,
       gradient: [Color(0xFFB24435), Color(0xFFE7C08A)],
+      imageAsset: 'assets/images/an_vang_trieu_nguyen.jpg',
+      // Xích khung lên trên để thấy con rồng (phần trên ảnh) nhiều hơn.
+      imageAlignment: Alignment(0, -0.6),
       rating: 4.7,
       reviewCount: 189,
       audioDuration: '04:20',
       videoDuration: '03:05',
       mapX: 0.62,
       mapY: 0.22,
+      lat: 21.03595,
+      lng: 105.84045,
     ),
     Artifact(
       id: 'a3',
@@ -111,12 +148,17 @@ class MockData {
           'thẩm mỹ mẫu mực trong lịch sử mỹ thuật Việt Nam.',
       icon: Icons.self_improvement_outlined,
       gradient: [Color(0xFF5E1A13), Color(0xFFB24435)],
+      imageAsset: 'assets/images/tuong_phat_a_di_da.jpg',
+      // Xích nhẹ lên trên để thấy tượng Phật (phần trên) rõ hơn.
+      imageAlignment: Alignment(0, -0.3),
       rating: 4.9,
       reviewCount: 312,
       audioDuration: '05:10',
       videoDuration: '04:00',
       mapX: 0.35,
       mapY: 0.62,
+      lat: 21.03510,
+      lng: 105.83955,
     ),
     Artifact(
       id: 'a4',
@@ -131,12 +173,15 @@ class MockData {
           'khoắn của nghệ thuật Đại Việt.',
       icon: Icons.emoji_food_beverage_outlined,
       gradient: [Color(0xFFA8481F), Color(0xFFD99A4E)],
+      imageAsset: 'assets/images/gom_hoa_nau.jpg',
       rating: 4.5,
       reviewCount: 98,
       audioDuration: '02:55',
       videoDuration: '01:45',
       mapX: 0.74,
       mapY: 0.55,
+      lat: 21.03540,
+      lng: 105.84075,
     ),
     Artifact(
       id: 'a5',
@@ -151,12 +196,17 @@ class MockData {
           'và nghệ thuật đúc đồng thế kỷ XIX.',
       icon: Icons.security_outlined,
       gradient: [Color(0xFF8C2B21), Color(0xFFD98E5A)],
+      imageAsset: 'assets/images/sung_than_cong.jpg',
+      // Xích nhẹ xuống để tập trung vào khẩu súng, bớt phần trần/mô hình phía trên.
+      imageAlignment: Alignment(0, 0.2),
       rating: 4.3,
       reviewCount: 74,
       audioDuration: '03:15',
       videoDuration: '02:30',
       mapX: 0.52,
       mapY: 0.80,
+      lat: 21.03470,
+      lng: 105.84010,
     ),
   ];
 

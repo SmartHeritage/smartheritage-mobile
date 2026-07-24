@@ -22,6 +22,24 @@ class ArtifactThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final asset = artifact.imageAsset;
+    if (asset != null && asset.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Image.asset(
+          asset,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          alignment: artifact.imageAlignment,
+          errorBuilder: (context, error, stack) => _placeholder(),
+        ),
+      );
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
     return Container(
       width: size,
       height: size,
@@ -54,6 +72,17 @@ class ArtifactImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final asset = artifact.imageAsset;
+    if (asset != null && asset.isNotEmpty) {
+      return Image.asset(
+        asset,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        alignment: artifact.imageAlignment,
+        errorBuilder: (context, error, stack) => _placeholder(),
+      );
+    }
     final url = artifact.imageUrl;
     if (url != null && url.isNotEmpty) {
       return Image.network(

@@ -39,8 +39,6 @@ class HistoryScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
-              _buildSummary(store),
-              const SizedBox(height: 20),
               for (final entry in grouped.entries) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -75,64 +73,6 @@ class HistoryScreen extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildSummary(VisitHistoryController store) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.accent],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          _stat('${store.artifactCount}', 'Hiện vật\nđã gặp'),
-          _verticalDivider(),
-          _stat('${store.records.length}', 'Lượt\nphát hiện'),
-          _verticalDivider(),
-          _stat('${store.zoneCount}', 'Khu vực\nđã ghé'),
-        ],
-      ),
-    );
-  }
-
-  Widget _stat(String value, String label) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 12,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _verticalDivider() {
-    return Container(
-      width: 1,
-      height: 44,
-      color: Colors.white.withValues(alpha: 0.25),
     );
   }
 

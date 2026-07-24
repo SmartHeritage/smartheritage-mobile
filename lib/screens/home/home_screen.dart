@@ -506,7 +506,7 @@ class BeaconDetectedSheet extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: ElevatedButton.icon(
+                child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -516,8 +516,7 @@ class BeaconDetectedSheet extends StatelessWidget {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.headphones, size: 20),
-                  label: const Text('Khám phá ngay'),
+                  child: const Text('Khám phá ngay'),
                 ),
               ),
             ],

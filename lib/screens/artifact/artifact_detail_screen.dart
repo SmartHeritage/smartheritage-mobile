@@ -61,24 +61,7 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: artifact.gradient,
-                  ),
-                ),
-                child: SafeArea(
-                  child: Center(
-                    child: Icon(
-                      artifact.icon,
-                      size: 110,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ),
-              ),
+              background: _heroBackground(artifact),
             ),
           ),
         ],
@@ -112,6 +95,56 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Nền hero: ưu tiên ảnh chi tiết → ảnh thường → gradient + icon.
+  Widget _heroBackground(Artifact artifact) {
+    final image = artifact.detailImageAsset ?? artifact.imageAsset;
+    if (image != null && image.isNotEmpty) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            image,
+            fit: BoxFit.cover,
+            alignment: artifact.detailImageAlignment,
+          ),
+          // Lớp phủ tối nhẹ ở trên/dưới để nút và tiêu đề dễ nhìn.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.30),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.20),
+                ],
+                stops: const [0, 0.45, 1],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: artifact.gradient,
+        ),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: Icon(
+            artifact.icon,
+            size: 110,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
         ),
       ),
     );

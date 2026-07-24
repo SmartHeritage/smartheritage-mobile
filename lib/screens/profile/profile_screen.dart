@@ -192,27 +192,10 @@ class ProfileScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Khách',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'Đăng nhập để đồng bộ lịch sử & yêu thích',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 13,
-          ),
-        ),
-        const SizedBox(height: 10),
         GestureDetector(
           onTap: () => AuthController.ensureLoggedIn(context),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -225,6 +208,14 @@ class ProfileScreen extends StatelessWidget {
                 fontSize: 13,
               ),
             ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Đăng nhập để đồng bộ lịch sử & yêu thích',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 13,
           ),
         ),
       ],

@@ -16,6 +16,7 @@ class AppColors {
   static const Color divider = Color(0xFFEEE0DA);
   static const Color warning = Color(0xFFE9A23B);
   static const Color danger = Color(0xFFC0392B);
+  static const Color success = Color(0xFF2E7D4F); // xanh lá đậm — nền snackbar
 }
 
 class AppTheme {
@@ -105,7 +106,7 @@ class AppTheme {
         unselectedItemColor: AppColors.textSecondary,
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.primaryDark,
+        backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

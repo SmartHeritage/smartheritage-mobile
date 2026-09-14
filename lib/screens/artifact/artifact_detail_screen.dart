@@ -23,7 +23,7 @@ class ArtifactDetailScreen extends StatefulWidget {
 class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController = TabController(
-    length: 4,
+    length: 5,
     vsync: this,
     initialIndex: widget.initialTabIndex,
   );
@@ -70,6 +70,9 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
             _buildTitleBlock(artifact),
             TabBar(
               controller: _tabController,
+              // 5 tab không đủ chỗ chia đều ở khổ điện thoại → cho cuộn ngang.
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondary,
               indicatorColor: AppColors.primary,
@@ -81,6 +84,7 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
                 Tab(text: 'Hình ảnh'),
                 Tab(text: 'Video'),
                 Tab(text: 'Âm thanh'),
+                Tab(text: 'Đánh giá'),
               ],
             ),
             Expanded(
@@ -91,6 +95,7 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
                   _GalleryTab(artifact: artifact),
                   _VideoTab(artifact: artifact),
                   _AudioTab(artifact: artifact),
+                  FeedbackForm(artifact: artifact),
                 ],
               ),
             ),
@@ -201,19 +206,25 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
               const Icon(Icons.history_edu_outlined,
                   size: 16, color: AppColors.accent),
               const SizedBox(width: 4),
-              Text(
-                artifact.era,
-                style: const TextStyle(
-                    fontSize: 13.5, color: AppColors.textSecondary),
+              Flexible(
+                child: Text(
+                  artifact.era,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13.5, color: AppColors.textSecondary),
+                ),
               ),
               const SizedBox(width: 14),
               const Icon(Icons.place_outlined,
                   size: 16, color: AppColors.accent),
               const SizedBox(width: 4),
-              Text(
-                artifact.zone,
-                style: const TextStyle(
-                    fontSize: 13.5, color: AppColors.textSecondary),
+              Flexible(
+                child: Text(
+                  artifact.zone,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 13.5, color: AppColors.textSecondary),
+                ),
               ),
             ],
           ),
@@ -284,14 +295,6 @@ class _IntroTab extends StatelessWidget {
             height: 1.65,
             color: AppColors.textSecondary,
           ),
-        ),
-        const SizedBox(height: 24),
-        OutlinedButton.icon(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => FeedbackScreen(artifact: artifact),
-          )),
-          icon: const Icon(Icons.rate_review_outlined),
-          label: const Text('Đánh giá & gửi phản hồi'),
         ),
       ],
     );
@@ -450,9 +453,14 @@ class _AudioTabState extends State<_AudioTab> {
   void initState() {
     super.initState();
     // Bắt đầu phát ngay khi mở tab, đồng bộ với thanh mini-player toàn app.
-    if (AudioPlayerController.instance.artifact?.id != widget.artifact.id) {
-      AudioPlayerController.instance.play(widget.artifact);
-    }
+    // Hoãn sang sau frame: play() gọi notifyListeners() và MiniPlayerBar đang
+    // lắng nghe, nên gọi thẳng trong initState sẽ markNeedsBuild giữa lúc build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (AudioPlayerController.instance.artifact?.id != widget.artifact.id) {
+        AudioPlayerController.instance.play(widget.artifact);
+      }
+    });
   }
 
   @override

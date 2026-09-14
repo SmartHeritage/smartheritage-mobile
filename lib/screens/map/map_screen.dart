@@ -11,7 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 import '../artifact/artifact_detail_screen.dart';
 
-/// Bản đồ khu di tích thật (OpenStreetMap) + định vị GPS người dùng.
+/// Bản đồ khu di tích thật (tiles CARTO, dữ liệu OpenStreetMap) + định vị GPS.
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -96,7 +96,7 @@ class _MapScreenState extends State<MapScreen> {
       ),
       body: Stack(
         children: [
-          // 1) Nền bản đồ thật (tiles OpenStreetMap)
+          // 1) Nền bản đồ thật (tiles CARTO)
           FlutterMap(
             mapController: _mapController,
             options: const MapOptions(
@@ -106,9 +106,14 @@ class _MapScreenState extends State<MapScreen> {
               maxZoom: 19,
             ),
             children: [
+              // Tiles của CARTO (dữ liệu vẫn từ OpenStreetMap). Không dùng
+              // public tile server của OSM: usage policy của họ không cho phép
+              // dùng cho app thật.
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.smartheritage.smartheritage',
+                maxNativeZoom: 20,
               ),
 
               // 3) Vòng độ chính xác + chấm vị trí người dùng
@@ -157,6 +162,15 @@ class _MapScreenState extends State<MapScreen> {
                         },
                       ),
                     ),
+                ],
+              ),
+
+              // License của CARTO buộc ghi nguồn cả CARTO và OpenStreetMap.
+              const RichAttributionWidget(
+                alignment: AttributionAlignment.bottomLeft,
+                attributions: [
+                  TextSourceAttribution('CARTO'),
+                  TextSourceAttribution('OpenStreetMap contributors'),
                 ],
               ),
             ],

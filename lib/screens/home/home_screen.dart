@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
 import '../../state/audio_player_state.dart';
+import '../../state/beacon_scan_state.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
@@ -18,32 +17,32 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Timer? _beaconTimer;
+  final _scan = BeaconScanController.instance;
   bool _sheetShown = false;
-  bool _scanning = false; // tính năng quét iBeacon đang bật hay tắt
+
+  @override
+  void initState() {
+    super.initState();
+    _scan.addListener(_onScanChanged);
+  }
 
   @override
   void dispose() {
-    _beaconTimer?.cancel();
+    _scan.removeListener(_onScanChanged);
     super.dispose();
   }
 
-  void _startScan() {
-    setState(() => _scanning = true);
-    // Mô phỏng: khi đang quét, sau vài giây beacon phát hiện một hiện vật.
-    _beaconTimer?.cancel();
-    _beaconTimer = Timer(const Duration(seconds: 4), _showBeaconSheet);
+  /// Công tắc quét nằm ở sidebar, nhưng phần mở sheet giới thiệu vẫn thuộc
+  /// trang chủ vì cần BuildContext của nó.
+  void _onScanChanged() {
+    final artifact = _scan.detected;
+    if (artifact == null || _sheetShown || !mounted) return;
+    _scan.consumeDetection();
+    _showBeaconSheet(artifact);
   }
 
-  void _stopScan() {
-    _beaconTimer?.cancel();
-    setState(() => _scanning = false);
-  }
-
-  void _showBeaconSheet() {
-    if (!mounted || !_scanning || _sheetShown) return;
+  void _showBeaconSheet(Artifact artifact) {
     _sheetShown = true;
-    final artifact = MockData.artifacts[1];
     // iBeacon phát hiện → ghi vào lịch sử tham quan (lưu local, kể cả khách).
     VisitHistoryController.instance.recordBeaconVisit(artifact);
     showModalBottomSheet<void>(
@@ -59,28 +58,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final artifacts = MockData.artifacts;
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 20),
-            _buildSearchBar(),
-            const SizedBox(height: 20),
-            _buildBeaconBanner(),
-            const SizedBox(height: 24),
-            // "Tham quan gần đây" là dữ liệu theo dõi → chỉ hiện khi đã đăng nhập,
-            // và đặt trên "Hiện vật nổi bật".
-            _buildRecentVisits(),
-            SectionHeader(title: 'Hiện vật nổi bật', onSeeAll: () {}),
-            const SizedBox(height: 12),
-            for (final artifact in artifacts) ...[
-              _FeaturedCard(artifact: artifact),
-              const SizedBox(height: 16),
-            ],
+    // Không bọc Scaffold riêng: dùng Scaffold của MainShell để nút menu ở
+    // header mở được sidebar qua Scaffold.of(context).
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 20),
+          _buildSearchBar(),
+          const SizedBox(height: 24),
+          // "Tham quan gần đây" là dữ liệu theo dõi → chỉ hiện khi đã đăng nhập,
+          // và đặt trên "Hiện vật nổi bật".
+          _buildRecentVisits(),
+          const SectionHeader(title: 'Hiện vật nổi bật'),
+          const SizedBox(height: 12),
+          for (final artifact in artifacts) ...[
+            _FeaturedCard(artifact: artifact),
+            const SizedBox(height: 16),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -119,9 +116,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
+        GestureDetector(
+          onTap: () => Scaffold.of(context).openDrawer(),
+          child: Container(
+            width: 46,
+            height: 46,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceTint,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.menu, color: AppColors.primary),
+          ),
+        ),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,197 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Icon(Icons.tune, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-  }
-
-  /// Một card duy nhất cho cả hai trạng thái. Khi đang quét: nền đổi sang nâu
-  /// đỏ chủ đạo, icon toả sóng, chữ và nút đổi tương ứng.
-  Widget _buildBeaconBanner() {
-    final scanning = _scanning;
-    final titleColor = scanning ? Colors.white : AppColors.textPrimary;
-    final subtitleColor =
-        scanning ? Colors.white.withValues(alpha: 0.85) : AppColors.textSecondary;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.fromLTRB(scanning ? 26 : 16, 16, 16, 16),
-      decoration: BoxDecoration(
-        color: scanning ? AppColors.primary : AppColors.surfaceTint,
-        borderRadius: BorderRadius.circular(22),
-        border: scanning ? null : Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        children: [
-          // Ô icon: khi tắt là bluetooth mờ; khi bật là bluetooth toả sóng.
-          SizedBox(
-            width: 56,
-            height: 56,
-            child: scanning
-                ? const _ScanningPulseIcon(size: 56)
-                : Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.bluetooth_disabled,
-                      color: AppColors.textSecondary,
-                      size: 26,
-                    ),
-                  ),
-          ),
-          SizedBox(width: scanning ? 26 : 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  scanning ? 'Đang quét iBeacon' : 'Quét iBeacon đang tắt',
-                  style: TextStyle(
-                    color: titleColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  scanning
-                      ? 'Đang tìm hiện vật ở gần bạn…'
-                      : 'Bật để tự động phát hiện hiện vật ở gần bạn',
-                  maxLines: scanning ? 1 : 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: subtitleColor,
-                    fontSize: 13,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: scanning ? _stopScan : _startScan,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scanning ? Colors.white : AppColors.primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          scanning
-                              ? Icons.power_settings_new
-                              : Icons.bluetooth_searching,
-                          size: 17,
-                          color: scanning ? AppColors.primary : Colors.white,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          scanning ? 'Tắt quét' : 'Bật quét iBeacon',
-                          style: TextStyle(
-                            color: scanning ? AppColors.primary : Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Icon khi đang quét: cùng kiểu vòng tròn trắng như mode tắt (nhưng bluetooth
-/// bật, màu chủ đạo) + các vòng sóng radar lan ra để báo đang quét.
-class _ScanningPulseIcon extends StatefulWidget {
-  const _ScanningPulseIcon({this.size = 56});
-
-  final double size;
-
-  @override
-  State<_ScanningPulseIcon> createState() => _ScanningPulseIconState();
-}
-
-class _ScanningPulseIconState extends State<_ScanningPulseIcon>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = widget.size;
-    // Vùng vẽ rộng hơn ô để sóng có chỗ lan ra (OverflowBox bỏ ràng buộc 56px).
-    final canvas = size * 1.7;
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Center(
-        child: OverflowBox(
-          maxWidth: canvas,
-          maxHeight: canvas,
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  for (final delay in [0.0, 0.33, 0.66])
-                    _ring((_controller.value + delay) % 1.0, size),
-                  child!,
-                ],
-              );
-            },
-            // Vòng tròn trắng + icon bluetooth bật (giữ giống mode tắt).
-            child: Container(
-              width: size,
-              height: size,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.bluetooth,
-                color: AppColors.primary,
-                size: 26,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _ring(double t, double size) {
-    // Lan từ mép vòng tròn (size) ra ngoài ~1.65x, mờ dần.
-    final diameter = size * (1.0 + 0.65 * t);
-    return Container(
-      width: diameter,
-      height: diameter,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: (1 - t) * 0.7),
-          width: 2.5,
         ),
       ),
     );

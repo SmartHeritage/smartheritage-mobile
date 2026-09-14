@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../state/visit_history_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_sidebar.dart';
 import '../widgets/mini_player_bar.dart';
 import 'favorites/favorites_screen.dart';
 import 'home/home_screen.dart';
@@ -61,6 +62,8 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Sidebar đặt ở đây (không ở HomeScreen) để phủ cả bottom nav + mini-player.
+      drawer: const AppSidebar(),
       body: IndexedStack(index: _index, children: _screens),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,

@@ -32,7 +32,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.surfaceTint,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: const [
@@ -56,7 +56,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(10),
                 onTap: () => setState(() => _selected = code),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -65,7 +65,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
                     color: _selected == code
                         ? AppColors.surfaceTint
                         : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _selected == code
                           ? AppColors.primary

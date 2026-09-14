@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../app_info.dart';
+import '../screens/help/help_screen.dart';
 import '../screens/history/history_screen.dart';
 import '../screens/profile/language_screen.dart';
 import '../state/auth_state.dart';
@@ -40,6 +42,11 @@ class AppSidebar extends StatelessWidget {
                       label: 'Ngôn ngữ',
                       onTap: () => _open(context, const LanguageScreen()),
                     ),
+                    _Item(
+                      icon: Icons.help_outline,
+                      label: 'Câu hỏi thường gặp',
+                      onTap: () => _open(context, const HelpScreen()),
+                    ),
                   ],
                 ),
               ),
@@ -50,6 +57,13 @@ class AppSidebar extends StatelessWidget {
                     icon: Icons.logout,
                     label: 'Đăng xuất',
                     color: AppColors.danger,
+                    trailing: const Text(
+                      AppInfo.versionLabel,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     onTap: () {
                       Scaffold.of(context).closeDrawer();
                       _confirmLogout(context);
@@ -75,7 +89,7 @@ class AppSidebar extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Đăng xuất'),
         content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?'),
         actions: [
@@ -178,7 +192,7 @@ class _LoginChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: const Text(
             'Đăng nhập / Đăng ký',
@@ -239,12 +253,14 @@ class _Item extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.color,
+    this.trailing,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final Color? color;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -258,6 +274,7 @@ class _Item extends StatelessWidget {
           color: color ?? AppColors.textPrimary,
         ),
       ),
+      trailing: trailing,
       onTap: onTap,
     );
   }

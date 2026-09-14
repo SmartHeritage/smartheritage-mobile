@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../app_info.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
+import '../auth/register_screen.dart';
 import '../feedback/feedback_screen.dart';
+import '../help/help_screen.dart';
 import '../history/history_screen.dart';
 import 'edit_profile_screen.dart';
 import 'language_screen.dart';
@@ -77,13 +80,15 @@ class ProfileScreen extends StatelessWidget {
             context,
             icon: Icons.help_outline,
             title: 'Trợ giúp & câu hỏi thường gặp',
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const HelpScreen()),
+            ),
           ),
           _menuItem(
             context,
             icon: Icons.info_outline,
             title: 'Về ứng dụng',
-            trailingText: 'v1.0.0',
+            trailingText: AppInfo.versionLabel,
             onTap: () {},
           ),
               const SizedBox(height: 24),
@@ -107,6 +112,12 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildProfileCard(BuildContext context) {
     final auth = AuthController.instance;
+    // Khách và người đã đăng nhập dùng hai card khác nhau hẳn: card guest
+    // không có avatar rỗng, mà nói rõ đăng nhập thì được gì.
+    return auth.isLoggedIn ? _loggedInCard(auth) : _guestCard(context);
+  }
+
+  Widget _loggedInCard(AuthController auth) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -115,7 +126,7 @@ class ProfileScreen extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [AppColors.primaryDark, AppColors.primaryLight],
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -130,11 +141,7 @@ class ProfileScreen extends StatelessWidget {
             child: const Icon(Icons.person, size: 36, color: AppColors.primary),
           ),
           const SizedBox(width: 14),
-          Expanded(
-            child: auth.isLoggedIn
-                ? _loggedInInfo(auth)
-                : _guestInfo(context),
-          ),
+          Expanded(child: _loggedInInfo(auth)),
         ],
       ),
     );
@@ -165,7 +172,7 @@ class ProfileScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -188,37 +195,66 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _guestInfo(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => AuthController.ensureLoggedIn(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Đăng nhập / Đăng ký',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+  Widget _guestCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: const Icon(Icons.person_outline,
+                    size: 30, color: AppColors.primary),
               ),
-            ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text(
+                  'Tham quan có tài khoản riêng',
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Đăng nhập để đồng bộ lịch sử & yêu thích',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 13,
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => AuthController.ensureLoggedIn(context),
+                  child: const Text('Đăng nhập'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  ),
+                  child: const Text('Đăng ký'),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -248,13 +284,13 @@ class ProfileScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.divider),
           ),
           child: Row(
@@ -264,7 +300,7 @@ class ProfileScreen extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceTint,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 22, color: AppColors.primary),
               ),
@@ -304,7 +340,7 @@ class ProfileScreen extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Đăng xuất'),
         content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?'),
         actions: [

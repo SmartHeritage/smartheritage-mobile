@@ -112,10 +112,12 @@ class _SplashScreenState extends State<SplashScreen>
                     child: ScaleTransition(
                       scale: _logoScale,
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        // Viền trắng = padding này. Bán kính ngoài giữ bằng
+                        // bán kính trong + padding để hai góc đồng tâm.
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(32),
+                          borderRadius: BorderRadius.circular(19),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.28),
@@ -125,7 +127,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ],
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(14),
                           child: Image.asset(
                             'assets/images/app_logo.png',
                             width: 96,

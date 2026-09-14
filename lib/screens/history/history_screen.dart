@@ -80,7 +80,7 @@ class HistoryScreen extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Xoá lịch sử'),
         content: const Text('Xoá toàn bộ lịch sử tham quan trên thiết bị này?'),
         actions: [

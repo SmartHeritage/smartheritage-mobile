@@ -106,7 +106,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.surfaceTint,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [

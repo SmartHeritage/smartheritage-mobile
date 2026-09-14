@@ -77,6 +77,30 @@ class VisitRecord {
   final String timeLabel;
 }
 
+/// Loại thông báo — quyết định icon và màu hiển thị.
+enum AppNotificationKind { beacon, artifact, event, feedback }
+
+/// Một thông báo trong danh sách chuông (dữ liệu mẫu, chưa gắn FCM thật).
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.kind,
+    required this.title,
+    required this.body,
+    required this.timeLabel,
+    this.artifactId,
+  });
+
+  final String id;
+  final AppNotificationKind kind;
+  final String title;
+  final String body;
+  final String timeLabel;
+
+  /// Có giá trị thì bấm vào thông báo sẽ mở trang chi tiết hiện vật đó.
+  final String? artifactId;
+}
+
 class MockData {
   MockData._();
 
@@ -238,6 +262,51 @@ class MockData {
       artifact: artifacts[4],
       dateLabel: '02/07/2026',
       timeLabel: '10:05',
+    ),
+  ];
+
+  static const notifications = <AppNotification>[
+    AppNotification(
+      id: 'n1',
+      kind: AppNotificationKind.beacon,
+      title: 'Bạn đang ở gần Ấn vàng triều Nguyễn',
+      body: 'iBeacon phát hiện bạn ở Khu trưng bày B. Mở thuyết minh để nghe '
+          'giới thiệu về bảo vật này.',
+      timeLabel: '5 phút trước',
+      artifactId: 'a2',
+    ),
+    AppNotification(
+      id: 'n2',
+      kind: AppNotificationKind.artifact,
+      title: 'Hiện vật mới được bổ sung',
+      body: 'Trống đồng Đông Sơn vừa có thêm bản thuyết minh tiếng Anh và '
+          '6 ảnh chi tiết mới.',
+      timeLabel: '2 giờ trước',
+      artifactId: 'a1',
+    ),
+    AppNotification(
+      id: 'n3',
+      kind: AppNotificationKind.event,
+      title: 'Triển lãm chuyên đề cuối tuần',
+      body: '"Gốm Việt qua các triều đại" mở tại Khu trưng bày C, 8h–17h thứ '
+          'Bảy và Chủ nhật này.',
+      timeLabel: 'Hôm qua',
+    ),
+    AppNotification(
+      id: 'n4',
+      kind: AppNotificationKind.feedback,
+      title: 'Cảm ơn phản hồi của bạn',
+      body: 'Ban quản lý đã tiếp nhận góp ý về chất lượng âm thanh và đang '
+          'cải thiện.',
+      timeLabel: '15/07/2026',
+    ),
+    AppNotification(
+      id: 'n5',
+      kind: AppNotificationKind.event,
+      title: 'Giờ mở cửa dịp lễ',
+      body: 'Khu di tích mở cửa tới 21h trong ba ngày lễ, có tour đêm kèm '
+          'thuyết minh trực tiếp.',
+      timeLabel: '12/07/2026',
     ),
   ];
 }

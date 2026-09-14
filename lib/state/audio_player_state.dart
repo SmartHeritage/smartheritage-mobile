@@ -18,6 +18,26 @@ class AudioPlayerController extends ChangeNotifier {
   double progress = 0; // 0..1
   Timer? _ticker;
 
+  /// Khách tắt tiếng — audio vẫn chạy tiến trình, chỉ không phát ra loa.
+  /// Giữ qua các lần phát nên tắt một lần là các hiện vật sau cũng im.
+  bool isMuted = false;
+
+  void toggleMute() {
+    isMuted = !isMuted;
+    notifyListeners();
+  }
+
+  static const speedOptions = <double>[0.75, 1.0, 1.25, 1.5];
+
+  double speed = 1.0;
+
+  /// Bấm nút tốc độ là nhảy sang mức kế tiếp rồi quay vòng.
+  void cycleSpeed() {
+    final next = (speedOptions.indexOf(speed) + 1) % speedOptions.length;
+    speed = speedOptions[next];
+    notifyListeners();
+  }
+
   void play(Artifact next) {
     if (artifact?.id != next.id) {
       artifact = next;

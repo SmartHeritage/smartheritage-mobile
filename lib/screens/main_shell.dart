@@ -46,7 +46,7 @@ class _MainShellState extends State<MainShell> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => BeaconDetectedSheet(artifact: artifact),
     );

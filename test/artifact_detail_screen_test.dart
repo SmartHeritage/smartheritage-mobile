@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smartheritage/data/mock_data.dart';
 import 'package:smartheritage/screens/artifact/artifact_detail_screen.dart';
+import 'package:smartheritage/screens/audio/audio_player_screen.dart';
 import 'package:smartheritage/state/audio_player_state.dart';
 import 'package:smartheritage/widgets/mini_player_bar.dart';
 
@@ -41,19 +42,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('mở tab Âm thanh không markNeedsBuild giữa lúc build',
+  testWidgets('mở màn nghe thuyết minh không markNeedsBuild giữa lúc build',
       (tester) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    // Vào thẳng tab Âm thanh (đúng đường mini-player dùng) thay vì tap nhãn:
-    // TabBar cuộn ngang nên nhãn có thể nằm ngoài viewport. initState của tab
-    // chạy ngay trong lần build đầu — tái hiện đúng lỗi cần chặn.
-    await tester.pumpWidget(
-      _harness(MockData.artifacts.first, initialTabIndex: 3),
-    );
+    // AudioPlayerScreen gọi play() trong initState; mini-player phải có trong
+    // cây để tái hiện lỗi notify giữa lúc build.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: AudioPlayerScreen(artifact: MockData.artifacts.first),
+        bottomNavigationBar: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [MiniPlayerBar()],
+        ),
+      ),
+    ));
     // Không dùng pumpAndSettle: ticker của audio là Timer.periodic, không đứng.
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 100));
@@ -80,7 +86,7 @@ void main() {
 
   testWidgets('tab Đánh giá hiện form phản hồi của hiện vật', (tester) async {
     await tester.pumpWidget(
-      _harness(MockData.artifacts.first, initialTabIndex: 4),
+      _harness(MockData.artifacts.first, initialTabIndex: 3),
     );
     await tester.pumpAndSettle();
 
@@ -91,7 +97,7 @@ void main() {
   testWidgets('gửi phản hồi ở dạng tab thì không pop trang chi tiết',
       (tester) async {
     await tester.pumpWidget(
-      _harness(MockData.artifacts.first, initialTabIndex: 4),
+      _harness(MockData.artifacts.first, initialTabIndex: 3),
     );
     await tester.pumpAndSettle();
 

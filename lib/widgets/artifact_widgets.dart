@@ -185,7 +185,7 @@ class ArtifactListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ArtifactDetailScreen(artifact: artifact),
       )),
@@ -193,7 +193,7 @@ class ArtifactListTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.divider),
         ),
         child: Row(

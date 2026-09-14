@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../screens/artifact/artifact_detail_screen.dart';
+import '../screens/audio/audio_player_screen.dart';
 import '../state/audio_player_state.dart';
 import '../theme/app_theme.dart';
 import 'artifact_widgets.dart';
@@ -36,12 +36,7 @@ class MiniPlayerBar extends StatelessWidget {
             ),
             child: InkWell(
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ArtifactDetailScreen(
-                    artifact: artifact,
-                    initialTabIndex: 3,
-                  ),
-                ),
+                AudioPlayerScreen.route(artifact),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -76,7 +71,9 @@ class MiniPlayerBar extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Thuyết minh âm thanh',
+                                controller.isMuted
+                                    ? 'Thuyết minh · đã tắt tiếng'
+                                    : 'Thuyết minh âm thanh',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -87,17 +84,43 @@ class MiniPlayerBar extends StatelessWidget {
                             ],
                           ),
                         ),
+                        // Ba nút đặt sát nhau: ở khổ điện thoại mà để kích cỡ
+                        // IconButton mặc định (48px) là tràn hàng.
                         IconButton(
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 36),
+                          padding: const EdgeInsets.all(6),
+                          onPressed: controller.toggleMute,
+                          tooltip: controller.isMuted
+                              ? 'Bật tiếng'
+                              : 'Tắt tiếng',
+                          icon: Icon(
+                            controller.isMuted
+                                ? Icons.volume_off_rounded
+                                : Icons.volume_up_rounded,
+                            color: controller.isMuted
+                                ? AppColors.mint
+                                : Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 36),
+                          padding: const EdgeInsets.all(6),
                           onPressed: controller.togglePlay,
                           icon: Icon(
                             controller.isPlaying
                                 ? Icons.pause_rounded
                                 : Icons.play_arrow_rounded,
                             color: Colors.white,
-                            size: 28,
+                            size: 26,
                           ),
                         ),
                         IconButton(
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 32),
+                          padding: const EdgeInsets.all(6),
                           onPressed: controller.close,
                           icon: const Icon(
                             Icons.close_rounded,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smartheritage/app_info.dart';
 import 'package:smartheritage/screens/home/home_screen.dart';
 import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/state/beacon_scan_state.dart';
@@ -34,6 +35,7 @@ void main() {
     expect(find.text('Quét iBeacon'), findsOneWidget);
     expect(find.text('Lịch sử tham quan'), findsOneWidget);
     expect(find.text('Ngôn ngữ'), findsOneWidget);
+    expect(find.text('Câu hỏi thường gặp'), findsOneWidget);
     // Chưa đăng nhập → hiện chip đăng nhập, không hiện đăng xuất.
     expect(find.text('Đăng nhập / Đăng ký'), findsOneWidget);
     expect(find.text('Đăng xuất'), findsNothing);
@@ -80,5 +82,30 @@ void main() {
     expect(find.text('lenhatanh2411@gmail.com'), findsOneWidget);
     expect(find.text('Đăng xuất'), findsOneWidget);
     expect(find.text('Đăng nhập / Đăng ký'), findsNothing);
+    // Phiên bản nằm bên phải nút đăng xuất.
+    expect(find.text(AppInfo.versionLabel), findsOneWidget);
+  });
+
+  testWidgets('mục câu hỏi thường gặp mở trang trợ giúp', (tester) async {
+    await tester.pumpWidget(_harness());
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Câu hỏi thường gặp'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trợ giúp & FAQ'), findsOneWidget);
+    expect(find.text('iBeacon & phát hiện hiện vật'), findsOneWidget);
+  });
+
+  testWidgets('khách chưa đăng nhập thì không có hàng đăng xuất/phiên bản',
+      (tester) async {
+    await tester.pumpWidget(_harness());
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đăng xuất'), findsNothing);
+    expect(find.text(AppInfo.versionLabel), findsNothing);
   });
 }

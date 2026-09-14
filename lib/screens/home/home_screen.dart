@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../../data/mock_data.dart';
 import '../../state/audio_player_state.dart';
 import '../../state/beacon_scan_state.dart';
+import '../../state/notification_state.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 import '../artifact/artifact_detail_screen.dart';
 import '../history/history_screen.dart';
+import '../notification/notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,7 +20,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _scan = BeaconScanController.instance;
+  final _searchController = TextEditingController();
   bool _sheetShown = false;
+  String _query = '';
 
   @override
   void initState() {
@@ -29,7 +33,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _scan.removeListener(_onScanChanged);
+    _searchController.dispose();
     super.dispose();
+  }
+
+  /// Lọc theo tên, thời kỳ và khu trưng bày.
+  List<Artifact> get _results {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return MockData.artifacts;
+    return MockData.artifacts.where((a) {
+      return a.name.toLowerCase().contains(q) ||
+          a.era.toLowerCase().contains(q) ||
+          a.zone.toLowerCase().contains(q);
+    }).toList();
   }
 
   /// Công tắc quét nằm ở sidebar, nhưng phần mở sheet giới thiệu vẫn thuộc
@@ -38,18 +54,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final artifact = _scan.detected;
     if (artifact == null || _sheetShown || !mounted) return;
     _scan.consumeDetection();
+    // Phát thuyết minh ngay khi beacon phát hiện — khách không phải bấm gì.
+    // Nếu đang tắt tiếng thì vẫn chạy tiến trình, chỉ im lặng.
+    AudioPlayerController.instance.play(artifact);
     _showBeaconSheet(artifact);
   }
 
   void _showBeaconSheet(Artifact artifact) {
     _sheetShown = true;
+    // Sheet là một route nên nó phủ LÊN sidebar đang mở chứ không tắt sidebar.
+    // Đóng drawer trước, không thì đóng sheet xong vẫn thấy sidebar còn đó.
+    // HomeScreen không bọc Scaffold riêng nên đây là Scaffold của MainShell.
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold != null && scaffold.isDrawerOpen) {
+      scaffold.closeDrawer();
+    }
     // iBeacon phát hiện → ghi vào lịch sử tham quan (lưu local, kể cả khách).
     VisitHistoryController.instance.recordBeaconVisit(artifact);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => BeaconDetectedSheet(artifact: artifact),
     ).whenComplete(() => _sheetShown = false);
@@ -57,7 +83,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final artifacts = MockData.artifacts;
+    final searching = _query.trim().isNotEmpty;
+    final results = _results;
     // Không bọc Scaffold riêng: dùng Scaffold của MainShell để nút menu ở
     // header mở được sidebar qua Scaffold.of(context).
     return SafeArea(
@@ -68,15 +95,61 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 20),
           _buildSearchBar(),
           const SizedBox(height: 24),
-          // "Tham quan gần đây" là dữ liệu theo dõi → chỉ hiện khi đã đăng nhập,
-          // và đặt trên "Hiện vật nổi bật".
-          _buildRecentVisits(),
-          const SectionHeader(title: 'Hiện vật nổi bật'),
+          // Đang tìm kiếm thì ẩn "Tham quan gần đây" để kết quả lên trên cùng.
+          if (!searching) ...[
+            // Dữ liệu theo dõi → lưu local, đặt trên "Hiện vật nổi bật".
+            _buildRecentVisits(),
+            const SectionHeader(title: 'Hiện vật nổi bật'),
+          ] else
+            SectionHeader(title: 'Kết quả tìm kiếm (${results.length})'),
           const SizedBox(height: 12),
-          for (final artifact in artifacts) ...[
-            _FeaturedCard(artifact: artifact),
-            const SizedBox(height: 16),
-          ],
+          if (searching && results.isEmpty)
+            _buildNoResults()
+          else
+            for (final artifact in results) ...[
+              _FeaturedCard(artifact: artifact),
+              const SizedBox(height: 16),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResults() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceTint,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.search_off,
+                size: 36, color: AppColors.accent),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Không tìm thấy hiện vật',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Không có kết quả nào cho "${_query.trim()}".\n'
+            'Thử tên hiện vật, thời kỳ hoặc khu trưng bày.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -127,76 +200,101 @@ class _HomeScreenState extends State<HomeScreen> {
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: AppColors.surfaceTint,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.menu, color: AppColors.primary),
           ),
         ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Khám phá di sản',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Khám phá di sản quanh bạn hôm nay',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-            ],
+        const Expanded(
+          child: Text(
+            'Khám phá di sản',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
-        Stack(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceTint,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.notifications_outlined,
-                color: AppColors.primary,
-              ),
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: const BoxDecoration(
-                  color: AppColors.danger,
-                  shape: BoxShape.circle,
+        _buildNotificationButton(context),
+      ],
+    );
+  }
+
+  /// Nút chuông: badge đỏ chỉ hiện khi còn thông báo chưa đọc.
+  Widget _buildNotificationButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const NotificationScreen()),
+      ),
+      child: ListenableBuilder(
+        listenable: NotificationController.instance,
+        builder: (context, _) {
+          final unread = NotificationController.instance.unreadCount;
+          return Stack(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceTint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  color: AppColors.primary,
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+              if (unread > 0)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    constraints: const BoxConstraints(minWidth: 17),
+                    height: 17,
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: AppColors.background, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        unread > 9 ? '9+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   Widget _buildSearchBar() {
     return TextField(
+      controller: _searchController,
+      textInputAction: TextInputAction.search,
+      onChanged: (value) => setState(() => _query = value),
       decoration: InputDecoration(
         hintText: 'Tìm kiếm hiện vật, khu trưng bày...',
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: Container(
-          margin: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(Icons.tune, color: Colors.white, size: 20),
-        ),
+        suffixIcon: _query.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                color: AppColors.textSecondary,
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _query = '');
+                },
+              ),
       ),
     );
   }
@@ -210,7 +308,9 @@ class BeaconDetectedSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Cuộn được: nội dung sheet sát giới hạn chiều cao của showModalBottomSheet,
+    // máy màn hình ngắn hoặc cỡ chữ hệ thống lớn là tràn.
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -228,7 +328,7 @@ class BeaconDetectedSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.surfaceTint,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -281,39 +381,9 @@ class BeaconDetectedSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: GestureDetector(
-              onTap: () {
-                AudioPlayerController.instance.play(artifact);
-                Navigator.of(context).pop();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.accent],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
-                    SizedBox(width: 6),
-                    Text(
-                      'Nghe thuyết minh âm thanh',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          // Thuyết minh đã tự phát khi beacon phát hiện; ở đây chỉ báo trạng
+          // thái và cho khách tắt/bật tiếng.
+          const _BeaconAudioStatus(),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -346,6 +416,67 @@ class BeaconDetectedSheet extends StatelessWidget {
   }
 }
 
+/// Dải trạng thái thuyết minh trong sheet beacon: báo đang phát hay đã tắt
+/// tiếng, kèm nút loa để khách tự quyết.
+class _BeaconAudioStatus extends StatelessWidget {
+  const _BeaconAudioStatus();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AudioPlayerController.instance;
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final muted = controller.isMuted;
+        return Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+          decoration: BoxDecoration(
+            gradient: muted
+                ? null
+                : const LinearGradient(
+                    colors: [AppColors.primary, AppColors.accent],
+                  ),
+            color: muted ? AppColors.surfaceTint : null,
+            borderRadius: BorderRadius.circular(10),
+            border: muted ? Border.all(color: AppColors.divider) : null,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                muted ? Icons.volume_off_rounded : Icons.graphic_eq_rounded,
+                color: muted ? AppColors.textSecondary : Colors.white,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  muted
+                      ? 'Thuyết minh đang tắt tiếng'
+                      : 'Đang phát thuyết minh âm thanh',
+                  style: TextStyle(
+                    color: muted ? AppColors.textPrimary : Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: controller.toggleMute,
+                style: TextButton.styleFrom(
+                  foregroundColor: muted ? AppColors.primary : Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  minimumSize: const Size(0, 36),
+                ),
+                child: Text(muted ? 'Bật tiếng' : 'Tắt tiếng'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Card hiện vật khổ ngang màn hình: ảnh lớn + tên + chú thích + đánh giá.
 class _FeaturedCard extends StatelessWidget {
   const _FeaturedCard({required this.artifact});
@@ -363,7 +494,7 @@ class _FeaturedCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.divider),
           boxShadow: [
             BoxShadow(
@@ -379,7 +510,7 @@ class _FeaturedCard extends StatelessWidget {
             // Ảnh khổ ngang (placeholder khi chưa up ảnh thật)
             ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(22)),
+                  const BorderRadius.vertical(top: Radius.circular(14)),
               child: Stack(
                 children: [
                   ArtifactImage(artifact: artifact, height: 190),
@@ -393,7 +524,7 @@ class _FeaturedCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -444,7 +575,7 @@ class _FeaturedCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryDark.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

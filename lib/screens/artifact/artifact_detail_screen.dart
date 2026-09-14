@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
-import '../../state/audio_player_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
+import '../audio/audio_player_screen.dart';
 import '../feedback/feedback_screen.dart';
 
 class ArtifactDetailScreen extends StatefulWidget {
@@ -23,7 +23,7 @@ class ArtifactDetailScreen extends StatefulWidget {
 class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController = TabController(
-    length: 5,
+    length: 4,
     vsync: this,
     initialIndex: widget.initialTabIndex,
   );
@@ -70,9 +70,6 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
             _buildTitleBlock(artifact),
             TabBar(
               controller: _tabController,
-              // 5 tab không đủ chỗ chia đều ở khổ điện thoại → cho cuộn ngang.
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondary,
               indicatorColor: AppColors.primary,
@@ -83,7 +80,6 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
                 Tab(text: 'Giới thiệu'),
                 Tab(text: 'Hình ảnh'),
                 Tab(text: 'Video'),
-                Tab(text: 'Âm thanh'),
                 Tab(text: 'Đánh giá'),
               ],
             ),
@@ -94,7 +90,6 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
                   _IntroTab(artifact: artifact),
                   _GalleryTab(artifact: artifact),
                   _VideoTab(artifact: artifact),
-                  _AudioTab(artifact: artifact),
                   FeedbackForm(artifact: artifact),
                 ],
               ),
@@ -249,7 +244,7 @@ class _IntroTab extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.surfaceTint,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: const [
@@ -296,6 +291,14 @@ class _IntroTab extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ),
+        const SizedBox(height: 24),
+        // Thuyết minh có màn hình riêng (kiểu now-playing) chứ không còn là tab.
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context)
+              .push(AudioPlayerScreen.route(artifact)),
+          icon: const Icon(Icons.headphones_rounded, size: 20),
+          label: const Text('Nghe thuyết minh âm thanh'),
+        ),
       ],
     );
   }
@@ -319,7 +322,7 @@ class _GalleryTab extends StatelessWidget {
       itemBuilder: (context, i) {
         return Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -373,7 +376,7 @@ class _VideoTab extends StatelessWidget {
           Container(
             height: 190,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -402,7 +405,7 @@ class _VideoTab extends StatelessWidget {
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       artifact.videoDuration,
@@ -433,171 +436,6 @@ class _VideoTab extends StatelessWidget {
           const SizedBox(height: 20),
         ],
       ],
-    );
-  }
-}
-
-class _AudioTab extends StatefulWidget {
-  const _AudioTab({required this.artifact});
-
-  final Artifact artifact;
-
-  @override
-  State<_AudioTab> createState() => _AudioTabState();
-}
-
-class _AudioTabState extends State<_AudioTab> {
-  double _speed = 1.0;
-
-  @override
-  void initState() {
-    super.initState();
-    // Bắt đầu phát ngay khi mở tab, đồng bộ với thanh mini-player toàn app.
-    // Hoãn sang sau frame: play() gọi notifyListeners() và MiniPlayerBar đang
-    // lắng nghe, nên gọi thẳng trong initState sẽ markNeedsBuild giữa lúc build.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (AudioPlayerController.instance.artifact?.id != widget.artifact.id) {
-        AudioPlayerController.instance.play(widget.artifact);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final artifact = widget.artifact;
-    final controller = AudioPlayerController.instance;
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final playing = controller.artifact?.id == artifact.id &&
-            controller.isPlaying;
-        final progress =
-            controller.artifact?.id == artifact.id ? controller.progress : 0.0;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          children: [
-            Center(
-                child: ArtifactThumb(artifact: artifact, size: 150, radius: 32)),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                'Thuyết minh âm thanh',
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Center(
-              child: Text(
-                '${artifact.name} · Tiếng Việt',
-                style: const TextStyle(
-                    fontSize: 13.5, color: AppColors.textSecondary),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: AppColors.primary,
-                inactiveTrackColor: AppColors.divider,
-                thumbColor: AppColors.primary,
-                trackHeight: 4,
-              ),
-              child: Slider(
-                value: progress,
-                onChanged: (v) {
-                  if (controller.artifact?.id != artifact.id) {
-                    controller.play(artifact);
-                  }
-                  controller.seek(v);
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('00:00',
-                      style: TextStyle(
-                          fontSize: 12.5, color: AppColors.textSecondary)),
-                  Text(artifact.audioDuration,
-                      style: const TextStyle(
-                          fontSize: 12.5, color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  iconSize: 34,
-                  color: AppColors.textPrimary,
-                  onPressed: () => controller.seek(controller.progress - 0.05),
-                  icon: const Icon(Icons.replay_10_rounded),
-                ),
-                const SizedBox(width: 16),
-                GestureDetector(
-                  onTap: () {
-                    if (controller.artifact?.id != artifact.id) {
-                      controller.play(artifact);
-                    } else {
-                      controller.togglePlay();
-                    }
-                  },
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [AppColors.primary, AppColors.accent],
-                      ),
-                    ),
-                    child: Icon(
-                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                IconButton(
-                  iconSize: 34,
-                  color: AppColors.textPrimary,
-                  onPressed: () => controller.seek(controller.progress + 0.05),
-                  icon: const Icon(Icons.forward_10_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: Wrap(
-                spacing: 10,
-                children: [
-                  for (final speed in [0.75, 1.0, 1.25, 1.5])
-                    ChoiceChip(
-                      label: Text('${speed}x'),
-                      selected: _speed == speed,
-                      onSelected: (_) => setState(() => _speed = speed),
-                      labelStyle: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _speed == speed
-                            ? Colors.white
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

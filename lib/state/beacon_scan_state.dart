@@ -31,14 +31,27 @@ class BeaconScanController extends ChangeNotifier {
     _timer?.cancel();
     _timer = Timer(const Duration(seconds: 4), () {
       if (!_isScanning) return;
-      // Lấy hiện vật thứ hai cho giống bản demo cũ, nhưng danh sách giờ đến từ
-      // API nên không chắc có đủ phần tử.
-      final all = ArtifactRepository.instance.artifacts;
-      if (all.isEmpty) return;
-      _detected = all.length > 1 ? all[1] : all.first;
+      final detected = _pickArtifact();
+      if (detected == null) return;
+      _detected = detected;
       notifyListeners();
     });
     notifyListeners();
+  }
+
+  /// Hiện vật mà beacon mock "phát hiện".
+  ///
+  /// Ưu tiên hiện vật đã có bản thuyết minh: đây là đường duy nhất trong app
+  /// tự động phát audio, nên rơi vào hiện vật chưa có bản thu thì không thử
+  /// được luồng đó. Chưa hiện vật nào có audio thì giữ hành vi demo cũ — lấy
+  /// hiện vật thứ hai.
+  Artifact? _pickArtifact() {
+    final all = ArtifactRepository.instance.artifacts;
+    if (all.isEmpty) return null;
+    for (final artifact in all) {
+      if (artifact.hasAudio) return artifact;
+    }
+    return all.length > 1 ? all[1] : all.first;
   }
 
   void stopScan() {

@@ -70,12 +70,15 @@ void main() {
   late FakeAudioPlayer player;
   late AudioPlayerController audio;
 
-  /// Beacon mock luôn lấy hiện vật thứ hai của repository.
+  /// Giống dữ liệu thật: chỉ MỘT hiện vật có bản thu, và nó nằm cuối danh
+  /// sách — không phải vị trí mà beacon mock từng lấy cứng (index 1).
+  final withAudioId = MockData.artifacts.last.id;
+
   void seedRepository({required bool withAudio}) {
     ArtifactRepository.instance.setArtifactsForTest([
       for (final a in MockData.artifacts)
         _withAudio(a,
-            audioUrl: withAudio
+            audioUrl: withAudio && a.id == withAudioId
                 ? 'http://localhost:3000/uploads/audio/${a.id}.mp3'
                 : null),
     ]);
@@ -102,11 +105,12 @@ void main() {
 
     await _triggerDetection(tester);
 
-    // MockData.artifacts[1] là hiện vật beacon mock phát hiện.
-    expect(audio.artifact?.id, MockData.artifacts[1].id);
+    // Beacon phải chọn hiện vật CÓ bản thu, không lấy cứng index 1 nữa —
+    // không thì luồng tự phát chẳng bao giờ chạy được.
+    expect(audio.artifact?.id, withAudioId);
     expect(audio.isPlaying, isTrue);
     // Và phải thật sự mở file, không chỉ nhích thanh tiến trình như bản cũ.
-    expect(player.lastUrl, contains(MockData.artifacts[1].id));
+    expect(player.lastUrl, contains(withAudioId));
     // Sheet beacon hiện kèm trạng thái đang phát.
     expect(find.text('Đang phát thuyết minh âm thanh'), findsOneWidget);
 
@@ -207,6 +211,8 @@ void main() {
     expect(find.text('Đang phát thuyết minh âm thanh'), findsNothing);
     expect(player.lastUrl, isNull);
     expect(audio.isPlaying, isFalse);
+    // Không có lựa chọn nào tốt hơn thì giữ hành vi demo cũ.
+    expect(find.text(MockData.artifacts[1].name), findsWidgets);
 
     await _stopAll(tester);
   });
@@ -218,7 +224,7 @@ void main() {
     await _triggerDetection(tester);
 
     // Phát hiện mới vẫn im lặng, không tự bật tiếng lại.
-    expect(audio.artifact?.id, MockData.artifacts[1].id);
+    expect(audio.artifact?.id, withAudioId);
     expect(audio.isMuted, isTrue);
     expect(find.text('Thuyết minh đang tắt tiếng'), findsOneWidget);
 

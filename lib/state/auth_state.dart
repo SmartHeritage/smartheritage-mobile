@@ -59,7 +59,14 @@ class AuthController extends ChangeNotifier {
     _api.onSessionExpired = _clearSession;
   }
 
-  static final AuthController instance = AuthController();
+  static AuthController _instance = AuthController();
+
+  static AuthController get instance => _instance;
+
+  /// Thay controller dùng chung bằng bản chạy trên ApiClient giả, để widget
+  /// test dựng được luồng đăng nhập/đăng xuất mà không cần máy chủ thật.
+  @visibleForTesting
+  static set instance(AuthController controller) => _instance = controller;
 
   final ApiClient _api;
 

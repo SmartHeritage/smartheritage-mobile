@@ -36,7 +36,16 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       if (!mounted) return;
+      // Lấy messenger TRƯỚC khi điều hướng: pop xong thì context của màn này
+      // chết, còn messenger gốc của MaterialApp vẫn sống nên snackbar hiện
+      // được ở màn hình vừa quay về.
+      final messenger = ScaffoldMessenger.of(context);
       _leaveLoginScreen();
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Đăng nhập thành công')),
+        );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);

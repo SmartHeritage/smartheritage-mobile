@@ -53,6 +53,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         await AuthController.instance.updateProfile(phone: phone);
       }
       if (!mounted) return;
+      // Giữ messenger trước khi pop — context này sắp chết theo route.
+      final messenger = ScaffoldMessenger.of(context);
       final navigator = Navigator.of(context);
       if (navigator.canPop()) {
         // Quay về màn trước đó (cổng đăng nhập / hồ sơ), giờ đã đăng nhập.
@@ -63,6 +65,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           (route) => false,
         );
       }
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Tạo tài khoản thành công')),
+        );
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);

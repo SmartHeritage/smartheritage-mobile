@@ -98,10 +98,20 @@ class AppSidebar extends StatelessWidget {
             child: const Text('Huỷ'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              // Phải lấy từ dialogContext, không phải context của sidebar:
+              // drawer đã đóng trước khi tới đây nên context kia hết sống.
+              // Cả hai đều trỏ về messenger gốc của MaterialApp, thứ sống lâu
+              // hơn cả dialog lẫn drawer.
+              final messenger = ScaffoldMessenger.of(dialogContext);
               Navigator.of(dialogContext).pop();
               // Đăng xuất về chế độ khách, vẫn ở trong app.
-              AuthController.instance.logout();
+              await AuthController.instance.logout();
+              messenger
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(content: Text('Đã đăng xuất')),
+                );
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Đăng xuất'),

@@ -21,7 +21,7 @@ Widget _harness() {
 void main() {
   tearDown(() {
     BeaconScanController.instance.stopScan();
-    AuthController.instance.logout();
+    AuthController.instance.resetForTest();
   });
 
   testWidgets('nút menu ở header trang chủ mở được sidebar', (tester) async {
@@ -72,7 +72,7 @@ void main() {
 
   testWidgets('đã đăng nhập thì sidebar hiện tên, email và đăng xuất',
       (tester) async {
-    AuthController.instance.login();
+    AuthController.instance.setTestSession();
     await tester.pumpWidget(_harness());
 
     await tester.tap(find.byIcon(Icons.menu));

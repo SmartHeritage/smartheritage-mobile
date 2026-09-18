@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Mô hình hiện vật (dữ liệu mẫu cho UI).
+import '../config.dart';
+
+/// Mô hình hiện vật — dùng chung cho cả dữ liệu mẫu và dữ liệu thật từ API.
 class Artifact {
   const Artifact({
     required this.id,
@@ -25,6 +27,69 @@ class Artifact {
     this.lat = MockData.siteLat,
     this.lng = MockData.siteLng,
   });
+
+  /// Dựng từ JSON của `GET /artifacts` (smartheritage-BE).
+  ///
+  /// Backend chỉ giữ phần nội dung. Những thứ thuần trình bày — icon, gradient,
+  /// ảnh đóng gói trong app, cách căn khung, toạ độ GPS — không có trong
+  /// contract, nên lấy từ bản mock cùng tên; hiện vật lạ thì rơi về mặc định.
+  /// Ghép theo `name` vì id của backend là UUID, không trùng id mock 'a1'..'a5'.
+  factory Artifact.fromJson(Map<String, dynamic> json) {
+    final name = (json['name'] as String?) ?? '';
+    final decor = MockData.decorFor(name);
+    return Artifact(
+      id: json['id'] as String,
+      name: name,
+      era: (json['era'] as String?) ?? '',
+      zone: (json['zone'] as String?) ?? '',
+      shortIntro: (json['shortIntro'] as String?) ?? '',
+      description: (json['description'] as String?) ?? '',
+      icon: decor?.icon ?? Icons.museum_outlined,
+      gradient: decor?.gradient ??
+          const [Color(0xFF8C2B21), Color(0xFFC1613C)],
+      rating: _toDouble(json['rating']) ?? 0,
+      reviewCount: _toInt(json['reviewCount']) ?? 0,
+      audioDuration: (json['audioDuration'] as String?) ?? '--:--',
+      videoDuration: (json['videoDuration'] as String?) ?? '--:--',
+      imageUrl: resolveMediaUrl(json['imageUrl'] as String?),
+      imageAsset: decor?.imageAsset,
+      detailImageAsset: decor?.detailImageAsset,
+      imageAlignment: decor?.imageAlignment ?? Alignment.center,
+      detailImageAlignment: decor?.detailImageAlignment ?? Alignment.center,
+      mapX: _toDouble(json['mapX']) ?? 0.5,
+      mapY: _toDouble(json['mapY']) ?? 0.5,
+      lat: decor?.lat ?? MockData.siteLat,
+      lng: decor?.lng ?? MockData.siteLng,
+    );
+  }
+
+  /// TypeORM trả cột `numeric` của Postgres dưới dạng chuỗi, cột `real` dưới
+  /// dạng số — nhận cả hai để đổi kiểu cột phía BE không làm vỡ app.
+  static double? _toDouble(Object? v) => switch (v) {
+        num n => n.toDouble(),
+        String s => double.tryParse(s),
+        _ => null,
+      };
+
+  static int? _toInt(Object? v) => switch (v) {
+        num n => n.toInt(),
+        String s => int.tryParse(s),
+        _ => null,
+      };
+
+  /// Media do backend phục vụ trả về đường dẫn tương đối (`/uploads/...`).
+  /// Ghép với origin của API — bỏ đuôi `/api/v1` — để Image.network dùng được.
+  static String? resolveMediaUrl(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final base = Uri.parse(AppConfig.apiBaseUrl);
+    return Uri(
+      scheme: base.scheme,
+      host: base.host,
+      port: base.hasPort ? base.port : null,
+      path: raw.startsWith('/') ? raw : '/$raw',
+    ).toString();
+  }
 
   final String id;
   final String name;
@@ -236,6 +301,16 @@ class MockData {
 
   static Artifact byId(String id) =>
       artifacts.firstWhere((a) => a.id == id, orElse: () => artifacts.first);
+
+  /// Bản mock cùng tên, dùng làm nguồn cho phần trình bày khi dựng hiện vật
+  /// từ API. Trả `null` nếu backend có hiện vật mà app chưa có ảnh/icon riêng.
+  static Artifact? decorFor(String name) {
+    final key = name.trim().toLowerCase();
+    for (final a in artifacts) {
+      if (a.name.trim().toLowerCase() == key) return a;
+    }
+    return null;
+  }
 
   static final visitHistory = <VisitRecord>[
     VisitRecord(

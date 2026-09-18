@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/api_client.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../main_shell.dart';
@@ -13,10 +14,24 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscure = true;
   bool _agreed = false;
+  bool _busy = false;
 
-  void _register() {
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (!_agreed) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -24,15 +39,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ));
       return;
     }
-    AuthController.instance.login();
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      // Quay về màn trước đó (cổng đăng nhập / hồ sơ), giờ đã đăng nhập.
-      navigator.popUntil((route) => route.isFirst);
-    } else {
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-        (route) => false,
+    setState(() => _busy = true);
+    try {
+      await AuthController.instance.signUp(
+        email: _emailController.text,
+        password: _passwordController.text,
+        fullName: _nameController.text,
+      );
+      // Số điện thoại không nằm trong RegisterDto của backend — lưu kèm vào
+      // hồ sơ ngay sau khi có phiên.
+      final phone = _phoneController.text.trim();
+      if (phone.isNotEmpty) {
+        await AuthController.instance.updateProfile(phone: phone);
+      }
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        // Quay về màn trước đó (cổng đăng nhập / hồ sơ), giờ đã đăng nhập.
+        navigator.popUntil((route) => route.isFirst);
+      } else {
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainShell()),
+          (route) => false,
+        );
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
       );
     }
   }
@@ -56,6 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
+                  controller: _nameController,
                   decoration: const InputDecoration(
                     hintText: 'Họ và tên',
                     prefixIcon: Icon(Icons.person_outline),
@@ -65,7 +101,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
+                  controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
                   decoration: const InputDecoration(
                     hintText: 'Email',
                     prefixIcon: Icon(Icons.mail_outline),
@@ -76,6 +114,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
+                  controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
                     hintText: 'Số điện thoại',
@@ -87,6 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
+                  controller: _passwordController,
                   obscureText: _obscure,
                   decoration: InputDecoration(
                     hintText: 'Mật khẩu',
@@ -99,8 +139,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  validator: (v) => (v == null || v.length < 6)
-                      ? 'Mật khẩu tối thiểu 6 ký tự'
+                  // Khớp MinLength(8) của RegisterDto phía backend.
+                  validator: (v) => (v == null || v.length < 8)
+                      ? 'Mật khẩu tối thiểu 8 ký tự'
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -136,8 +177,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(
-                  onPressed: _register,
-                  child: const Text('Đăng ký'),
+                  onPressed: _busy ? null : _register,
+                  child: _busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Đăng ký'),
                 ),
                 const SizedBox(height: 20),
                 Row(

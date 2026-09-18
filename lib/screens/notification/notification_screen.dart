@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
 import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
@@ -52,7 +53,8 @@ class NotificationScreen extends StatelessWidget {
     final artifactId = item.artifactId;
     if (artifactId == null) return;
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ArtifactDetailScreen(artifact: MockData.byId(artifactId)),
+      builder: (_) =>
+          ArtifactDetailScreen(artifact: ArtifactRepository.instance.byId(artifactId)),
     ));
   }
 }

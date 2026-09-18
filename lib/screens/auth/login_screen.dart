@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/api_client.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../main_shell.dart';
@@ -14,11 +15,38 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscure = true;
+  bool _busy = false;
 
-  void _login() {
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    AuthController.instance.login();
+    setState(() => _busy = true);
+    try {
+      await AuthController.instance.signIn(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
+      _leaveLoginScreen();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    }
+  }
+
+  void _leaveLoginScreen() {
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       // Được mở như một "cổng đăng nhập" — trả về nơi đã gọi.
@@ -29,6 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
         (route) => false,
       );
     }
+  }
+
+  void _notSupportedYet() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đăng nhập Google chưa được hỗ trợ')),
+    );
   }
 
   @override
@@ -72,7 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
+                  controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
                   decoration: const InputDecoration(
                     hintText: 'Email',
                     prefixIcon: Icon(Icons.mail_outline),
@@ -83,6 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
+                  controller: _passwordController,
                   obscureText: _obscure,
                   decoration: InputDecoration(
                     hintText: 'Mật khẩu',
@@ -95,8 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  validator: (v) => (v == null || v.length < 6)
-                      ? 'Mật khẩu tối thiểu 6 ký tự'
+                  // Backend đặt tối thiểu 8 ký tự — chặn ngay ở đây để khỏi
+                  // đi một vòng mạng chỉ để nhận lỗi 400.
+                  validator: (v) => (v == null || v.length < 8)
+                      ? 'Mật khẩu tối thiểu 8 ký tự'
                       : null,
                 ),
                 Align(
@@ -108,8 +147,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(
-                  onPressed: _login,
-                  child: const Text('Đăng nhập'),
+                  onPressed: _busy ? null : _login,
+                  child: _busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Đăng nhập'),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -130,7 +178,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
-                  onPressed: _login,
+                  // Trước đây nút này gọi thẳng _login và giả lập đăng nhập.
+                  // Auth đã chạy thật nên không thể fake được nữa.
+                  onPressed: _notSupportedYet,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.divider, width: 1.4),
                     foregroundColor: AppColors.textPrimary,

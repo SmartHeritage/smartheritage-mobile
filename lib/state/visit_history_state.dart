@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/artifact_repository.dart';
 import '../data/mock_data.dart';
 
 /// Lịch sử tham quan lưu **cục bộ trên máy** (không cần đăng nhập).
@@ -19,27 +20,29 @@ class VisitHistoryController extends ChangeNotifier {
   bool _loaded = false;
 
   /// Danh sách bản ghi (mới nhất trước) để hiển thị.
-  List<VisitRecord> get records => _visits.map((v) {
-        final artifact = MockData.artifacts.firstWhere(
-          (a) => a.id == v.id,
-          orElse: () => MockData.artifacts.first,
-        );
+  ///
+  /// Bỏ qua id không còn tồn tại (dữ liệu lưu từ lần chạy trước, hoặc hiện vật
+  /// đã bị gỡ khỏi backend) — thà thiếu một dòng còn hơn hiện nhầm hiện vật.
+  List<VisitRecord> get records => _visits
+      .map((v) {
+        final artifact = ArtifactRepository.instance.tryById(v.id);
+        if (artifact == null) return null;
         return VisitRecord(
           artifact: artifact,
           dateLabel: _dateLabel(v.time),
           timeLabel: _timeLabel(v.time),
         );
-      }).toList();
+      })
+      .whereType<VisitRecord>()
+      .toList();
 
   bool get isEmpty => _visits.isEmpty;
 
   int get artifactCount => _visits.map((v) => v.id).toSet().length;
 
   int get zoneCount => _visits
-      .map((v) => MockData.artifacts
-          .firstWhere((a) => a.id == v.id,
-              orElse: () => MockData.artifacts.first)
-          .zone)
+      .map((v) => ArtifactRepository.instance.tryById(v.id)?.zone)
+      .whereType<String>()
       .toSet()
       .length;
 

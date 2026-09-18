@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
 import '../../state/audio_player_state.dart';
 import '../../state/beacon_scan_state.dart';
@@ -39,9 +40,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Lọc theo tên, thời kỳ và khu trưng bày.
   List<Artifact> get _results {
+    final all = ArtifactRepository.instance.artifacts;
     final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return MockData.artifacts;
-    return MockData.artifacts.where((a) {
+    if (q.isEmpty) return all;
+    return all.where((a) {
       return a.name.toLowerCase().contains(q) ||
           a.era.toLowerCase().contains(q) ||
           a.zone.toLowerCase().contains(q);
@@ -83,15 +85,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Danh sách hiện vật đến từ API nên phải vẽ lại khi repository tải xong.
+    return ListenableBuilder(
+      listenable: ArtifactRepository.instance,
+      builder: (context, _) => _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final searching = _query.trim().isNotEmpty;
     final results = _results;
     // Không bọc Scaffold riêng: dùng Scaffold của MainShell để nút menu ở
     // header mở được sidebar qua Scaffold.of(context).
     return SafeArea(
-      child: ListView(
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: ArtifactRepository.instance.refresh,
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
           _buildHeader(context),
+          if (ArtifactRepository.instance.isOffline) ...[
+            const SizedBox(height: 12),
+            _buildOfflineBanner(),
+          ],
           const SizedBox(height: 20),
           _buildSearchBar(),
           const SizedBox(height: 24),
@@ -110,6 +128,41 @@ class _HomeScreenState extends State<HomeScreen> {
               _FeaturedCard(artifact: artifact),
               const SizedBox(height: 16),
             ],
+        ],
+        ),
+      ),
+    );
+  }
+
+  /// Báo cho khách biết đang xem dữ liệu đóng gói sẵn, không phải dữ liệu mới
+  /// nhất — kéo xuống để thử tải lại.
+  Widget _buildOfflineBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off, size: 18, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Chưa kết nối được máy chủ — đang xem dữ liệu sẵn có.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: ArtifactRepository.instance.refresh,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Thử lại', style: TextStyle(fontSize: 12.5)),
+          ),
         ],
       ),
     );

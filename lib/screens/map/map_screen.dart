@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
 import '../../services/location_service.dart';
 import '../../theme/app_theme.dart';
@@ -29,17 +30,15 @@ class _MapScreenState extends State<MapScreen> {
   bool _locating = false;
   String _zone = 'Tất cả';
 
-  static const _zones = [
-    'Tất cả',
-    'Khu trưng bày A',
-    'Khu trưng bày B',
-    'Khu trưng bày C',
-    'Sân ngoài trời',
-  ];
+  /// Danh sách khu trưng bày lấy từ `GET /zones`, không còn cứng trong code.
+  List<String> get _zones => ArtifactRepository.instance.zones;
 
-  List<Artifact> get _visibleArtifacts => _zone == 'Tất cả'
-      ? MockData.artifacts
-      : MockData.artifacts.where((a) => a.zone == _zone).toList();
+  List<Artifact> get _visibleArtifacts {
+    final all = ArtifactRepository.instance.artifacts;
+    return _zone == 'Tất cả'
+        ? all
+        : all.where((a) => a.zone == _zone).toList();
+  }
 
   @override
   void dispose() {
@@ -90,6 +89,14 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Ghim và bộ lọc khu trưng bày đều đến từ API — vẽ lại khi repository xong.
+    return ListenableBuilder(
+      listenable: ArtifactRepository.instance,
+      builder: (context, _) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bản đồ tham quan'),

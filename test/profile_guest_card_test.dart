@@ -15,8 +15,8 @@ Widget _harness() {
 void main() {
   final auth = AuthController.instance;
 
-  setUp(auth.logout);
-  tearDown(auth.logout);
+  setUp(auth.resetForTest);
+  tearDown(auth.resetForTest);
 
   testWidgets('khách thấy card avatar với hai nút riêng', (tester) async {
     await tester.pumpWidget(_harness());
@@ -35,7 +35,7 @@ void main() {
   });
 
   testWidgets('đã đăng nhập thì thay bằng card gradient', (tester) async {
-    auth.login();
+    auth.setTestSession();
     await tester.pumpWidget(_harness());
 
     expect(find.text('Lê Nhật Anh'), findsOneWidget);

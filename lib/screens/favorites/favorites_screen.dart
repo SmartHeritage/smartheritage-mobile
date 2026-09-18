@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
@@ -33,8 +34,9 @@ class FavoritesScreen extends StatelessWidget {
     return ValueListenableBuilder<Set<String>>(
         valueListenable: FavoriteStore.ids,
         builder: (context, ids, _) {
-          final favorites =
-              MockData.artifacts.where((a) => ids.contains(a.id)).toList();
+          final favorites = ArtifactRepository.instance.artifacts
+              .where((a) => ids.contains(a.id))
+              .toList();
           if (favorites.isEmpty) {
             return Center(
               child: Column(

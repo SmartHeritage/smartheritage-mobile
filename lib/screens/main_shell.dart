@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../data/artifact_repository.dart';
 import '../state/visit_history_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_sidebar.dart';
@@ -36,10 +36,7 @@ class _MainShellState extends State<MainShell> {
 
   void _openBeacon(String artifactId) {
     if (!mounted) return;
-    final artifact = MockData.artifacts.firstWhere(
-      (a) => a.id == artifactId,
-      orElse: () => MockData.artifacts.first,
-    );
+    final artifact = ArtifactRepository.instance.byId(artifactId);
     // Mở từ thông báo FCM beacon → cũng ghi vào lịch sử tham quan (local).
     VisitHistoryController.instance.recordBeaconVisit(artifact);
     showModalBottomSheet<void>(

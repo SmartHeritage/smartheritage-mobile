@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/api_client.dart';
+import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -10,11 +12,28 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _nameController = TextEditingController(text: 'Lê Nhật Anh');
-  final _emailController =
-      TextEditingController(text: 'lenhatanh2411@gmail.com');
-  final _phoneController = TextEditingController(text: '0912 345 678');
-  String _gender = 'Nam';
+  /// Backend dùng enum MALE/FEMALE/OTHER, màn hình hiện nhãn tiếng Việt.
+  static const _genderLabels = {
+    'MALE': 'Nam',
+    'FEMALE': 'Nữ',
+    'OTHER': 'Khác',
+  };
+
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+  String? _gender;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = AuthController.instance.user;
+    _nameController = TextEditingController(text: user?.fullName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _gender = user?.gender;
+  }
 
   @override
   void dispose() {
@@ -24,11 +43,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  void _save() {
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Đã cập nhật thông tin cá nhân'),
-    ));
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    try {
+      await AuthController.instance.updateProfile(
+        fullName: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        gender: _gender,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đã cập nhật thông tin cá nhân'),
+      ));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   @override
@@ -84,6 +117,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _fieldLabel('Email'),
             TextField(
               controller: _emailController,
+              // Đổi email là đổi định danh đăng nhập — không mở ở màn hình này.
+              readOnly: true,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.mail_outline),
@@ -102,16 +137,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _fieldLabel('Giới tính'),
             Row(
               children: [
-                for (final gender in ['Nam', 'Nữ', 'Khác'])
+                for (final entry in _genderLabels.entries)
                   Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: ChoiceChip(
-                      label: Text(gender),
-                      selected: _gender == gender,
-                      onSelected: (_) => setState(() => _gender = gender),
+                      label: Text(entry.value),
+                      selected: _gender == entry.key,
+                      onSelected: (_) => setState(() => _gender = entry.key),
                       labelStyle: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: _gender == gender
+                        color: _gender == entry.key
                             ? Colors.white
                             : AppColors.textPrimary,
                       ),
@@ -121,8 +156,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: _save,
-              child: const Text('Lưu thay đổi'),
+              onPressed: _busy ? null : _save,
+              child: _busy
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Lưu thay đổi'),
             ),
           ],
         ),

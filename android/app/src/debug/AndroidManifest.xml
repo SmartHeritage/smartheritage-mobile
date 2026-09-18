@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Backend dev chạy HTTP thuần ở 10.0.2.2:3000; từ Android 9 trở đi
+         cleartext bị chặn mặc định. Chỉ mở ở bản debug — bản release vẫn
+         bắt buộc HTTPS. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

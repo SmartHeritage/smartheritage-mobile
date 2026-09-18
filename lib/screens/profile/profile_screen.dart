@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_info.dart';
 import '../../state/auth_state.dart';
+import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
 import '../auth/register_screen.dart';
 import '../feedback/feedback_screen.dart';
@@ -56,6 +57,9 @@ class ProfileScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const HistoryScreen()),
                 ),
               ),
+              const SizedBox(height: 16),
+              _sectionLabel('Thiết bị'),
+              _beaconScanItem(context),
               const SizedBox(height: 16),
           _sectionLabel('Hỗ trợ'),
           _menuItem(
@@ -255,6 +259,29 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Công tắc quét iBeacon — dùng chung state với sidebar và card trang chủ,
+  /// nên bật ở đây thì hai chỗ kia cũng đổi theo.
+  Widget _beaconScanItem(BuildContext context) {
+    return ListenableBuilder(
+      listenable: BeaconScanController.instance,
+      builder: (context, _) {
+        final scanning = BeaconScanController.instance.isScanning;
+        return _menuItem(
+          context,
+          icon: scanning ? Icons.bluetooth_searching : Icons.bluetooth_disabled,
+          title: 'Quét iBeacon',
+          trailingText: scanning ? 'Đang quét' : 'Đang tắt',
+          trailing: Switch(
+            value: scanning,
+            onChanged: (_) => BeaconScanController.instance.toggle(),
+            activeThumbColor: AppColors.primary,
+          ),
+          onTap: BeaconScanController.instance.toggle,
+        );
+      },
     );
   }
 

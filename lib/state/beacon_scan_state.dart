@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/artifact_repository.dart';
 import '../data/mock_data.dart';
 
 /// Trạng thái quét iBeacon dùng chung toàn app (mock, chưa gắn SDK beacon thật).
@@ -30,7 +31,11 @@ class BeaconScanController extends ChangeNotifier {
     _timer?.cancel();
     _timer = Timer(const Duration(seconds: 4), () {
       if (!_isScanning) return;
-      _detected = MockData.artifacts[1];
+      // Lấy hiện vật thứ hai cho giống bản demo cũ, nhưng danh sách giờ đến từ
+      // API nên không chắc có đủ phần tử.
+      final all = ArtifactRepository.instance.artifacts;
+      if (all.isEmpty) return;
+      _detected = all.length > 1 ? all[1] : all.first;
       notifyListeners();
     });
     notifyListeners();

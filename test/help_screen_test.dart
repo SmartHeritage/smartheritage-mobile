@@ -14,7 +14,7 @@ Widget _harness(Widget home) {
 
 void main() {
   setUp(() {
-    AuthController.instance.logout();
+    AuthController.instance.resetForTest();
     // Clipboard đi qua platform channel; không mock thì setData không resolve
     // và snackbar phía sau nó không bao giờ hiện.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -87,6 +87,10 @@ void main() {
 
     final entry = find.text('Trợ giúp & câu hỏi thường gặp');
     await tester.scrollUntilVisible(entry, 300);
+    // scrollUntilVisible dừng ngay khi widget tồn tại, có thể vẫn hụt vài px
+    // dưới mép màn hình test — kéo hẳn vào trong rồi mới bấm.
+    await tester.ensureVisible(entry);
+    await tester.pumpAndSettle();
     await tester.tap(entry);
     await tester.pumpAndSettle();
 

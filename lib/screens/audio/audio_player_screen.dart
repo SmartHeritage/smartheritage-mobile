@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../data/mock_data.dart';
 import '../../state/audio_player_state.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/rich_text_content.dart';
 import '../../widgets/artifact_widgets.dart';
 import '../artifact/artifact_detail_screen.dart';
 import '../profile/language_screen.dart';
@@ -379,7 +380,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              artifact.description,
+              // Dòng tóm tắt có maxLines + ellipsis nên không dựng rich text
+              // được — lột thẻ lấy chữ thuần, không thì hiện nguyên "<p><strong>".
+              htmlToPlainText(artifact.description),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -439,14 +442,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            Text(
-              artifact.description,
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.65,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            RichTextContent(html: artifact.description),
           ],
         ),
       ),

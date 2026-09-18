@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/mock_data.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
+import '../../widgets/rich_text_content.dart';
 import '../audio/audio_player_screen.dart';
 import '../feedback/feedback_screen.dart';
 
@@ -274,23 +275,9 @@ class _IntroTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          artifact.description,
-          style: const TextStyle(
-            fontSize: 15,
-            height: 1.65,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          artifact.description,
-          style: const TextStyle(
-            fontSize: 15,
-            height: 1.65,
-            color: AppColors.textSecondary,
-          ),
-        ),
+        // description là HTML do trình soạn thảo của admin sinh ra, không phải
+        // chữ thuần — phải parse mới thấy in đậm/danh sách như bên admin.
+        RichTextContent(html: artifact.description),
         const SizedBox(height: 24),
         // Thuyết minh có màn hình riêng (kiểu now-playing) chứ không còn là tab.
         FilledButton.icon(

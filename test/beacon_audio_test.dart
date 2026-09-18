@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:smartheritage/data/artifact_repository.dart';
 import 'package:smartheritage/data/mock_data.dart';
 import 'package:smartheritage/screens/home/home_screen.dart';
 import 'package:smartheritage/state/audio_player_state.dart';
 import 'package:smartheritage/state/beacon_scan_state.dart';
 import 'package:smartheritage/widgets/app_sidebar.dart';
 import 'package:smartheritage/widgets/mini_player_bar.dart';
+
+import 'support/fake_audio_player.dart';
 
 /// Giống bố cục MainShell: HomeScreen là body, mini-player ở bottom bar.
 Widget _harness() {
@@ -37,26 +40,59 @@ Future<void> _triggerDetectionTick(WidgetTester tester) async {
 }
 
 /// Dừng ngay trong test body: framework soát timer pending trước khi tearDown
-/// chạy, mà ticker audio là Timer.periodic.
+/// chạy, mà beacon mock dùng Timer.
 Future<void> _stopAll(WidgetTester tester) async {
   AudioPlayerController.instance.close();
   BeaconScanController.instance.stopScan();
   await tester.pump();
 }
 
+/// Bản sao của hiện vật mock, có thêm `audioUrl` như dữ liệu thật từ backend.
+Artifact _withAudio(Artifact base, {String? audioUrl}) => Artifact(
+      id: base.id,
+      name: base.name,
+      era: base.era,
+      zone: base.zone,
+      shortIntro: base.shortIntro,
+      description: base.description,
+      icon: base.icon,
+      gradient: base.gradient,
+      rating: base.rating,
+      reviewCount: base.reviewCount,
+      audioDuration: base.audioDuration,
+      videoDuration: base.videoDuration,
+      imageAsset: base.imageAsset,
+      audioUrl: audioUrl,
+    );
+
 void main() {
-  final audio = AudioPlayerController.instance;
   final scan = BeaconScanController.instance;
+  late FakeAudioPlayer player;
+  late AudioPlayerController audio;
+
+  /// Beacon mock luôn lấy hiện vật thứ hai của repository.
+  void seedRepository({required bool withAudio}) {
+    ArtifactRepository.instance.setArtifactsForTest([
+      for (final a in MockData.artifacts)
+        _withAudio(a,
+            audioUrl: withAudio
+                ? 'http://localhost:3000/uploads/audio/${a.id}.mp3'
+                : null),
+    ]);
+  }
 
   setUp(() {
     scan.stopScan();
-    audio.close();
-    audio.isMuted = false;
+    player = FakeAudioPlayer();
+    audio = AudioPlayerController(player: player);
+    AudioPlayerController.instance = audio;
+    seedRepository(withAudio: true);
   });
 
   tearDown(() {
     scan.stopScan();
     audio.close();
+    ArtifactRepository.instance.resetForTest();
   });
 
   testWidgets('beacon phát hiện thì tự phát thuyết minh', (tester) async {
@@ -69,6 +105,8 @@ void main() {
     // MockData.artifacts[1] là hiện vật beacon mock phát hiện.
     expect(audio.artifact?.id, MockData.artifacts[1].id);
     expect(audio.isPlaying, isTrue);
+    // Và phải thật sự mở file, không chỉ nhích thanh tiến trình như bản cũ.
+    expect(player.lastUrl, contains(MockData.artifacts[1].id));
     // Sheet beacon hiện kèm trạng thái đang phát.
     expect(find.text('Đang phát thuyết minh âm thanh'), findsOneWidget);
 
@@ -151,6 +189,24 @@ void main() {
 
     expect(find.byType(BeaconDetectedSheet), findsOneWidget);
     expect(find.byType(AppSidebar), findsNothing);
+
+    await _stopAll(tester);
+  });
+
+  testWidgets('hiện vật chưa có bản thu: nói rõ, không giả vờ đang phát',
+      (tester) async {
+    seedRepository(withAudio: false);
+    await tester.pumpWidget(_harness());
+
+    await _triggerDetection(tester);
+
+    // Sheet vẫn mở để khách đọc giới thiệu…
+    expect(find.byType(BeaconDetectedSheet), findsOneWidget);
+    // …nhưng không hứa suông là đang phát.
+    expect(find.text('Hiện vật này chưa có bản thuyết minh'), findsOneWidget);
+    expect(find.text('Đang phát thuyết minh âm thanh'), findsNothing);
+    expect(player.lastUrl, isNull);
+    expect(audio.isPlaying, isFalse);
 
     await _stopAll(tester);
   });

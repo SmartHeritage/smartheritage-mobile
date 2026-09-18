@@ -49,6 +49,24 @@ class ArtifactRepository extends ChangeNotifier {
       tryById(id) ??
       (_artifacts.isEmpty ? MockData.artifacts.first : _artifacts.first);
 
+  /// Nạp sẵn danh sách cho widget test, không đụng mạng.
+  @visibleForTesting
+  void setArtifactsForTest(List<Artifact> artifacts) {
+    _artifacts = artifacts;
+    _zones = _zonesFrom(artifacts);
+    _loadedOnce = true;
+    notifyListeners();
+  }
+
+  /// Trả về dữ liệu mock ban đầu sau mỗi test.
+  @visibleForTesting
+  void resetForTest() {
+    _artifacts = MockData.artifacts;
+    _zones = _zonesFrom(MockData.artifacts);
+    _loadedOnce = false;
+    _isOffline = false;
+  }
+
   /// Tải lần đầu; gọi lại nhiều lần không tốn thêm request.
   Future<void> ensureLoaded() async {
     if (_loadedOnce || _isLoading) return;

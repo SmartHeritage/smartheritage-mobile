@@ -18,6 +18,8 @@ class Artifact {
     required this.audioDuration,
     required this.videoDuration,
     this.imageUrl,
+    this.audioUrl,
+    this.videoUrl,
     this.imageAsset,
     this.detailImageAsset,
     this.imageAlignment = Alignment.center,
@@ -52,6 +54,8 @@ class Artifact {
       audioDuration: (json['audioDuration'] as String?) ?? '--:--',
       videoDuration: (json['videoDuration'] as String?) ?? '--:--',
       imageUrl: resolveMediaUrl(json['imageUrl'] as String?),
+      audioUrl: resolveMediaUrl(json['audioUrl'] as String?),
+      videoUrl: resolveMediaUrl(json['videoUrl'] as String?),
       imageAsset: decor?.imageAsset,
       detailImageAsset: decor?.detailImageAsset,
       imageAlignment: decor?.imageAlignment ?? Alignment.center,
@@ -106,6 +110,14 @@ class Artifact {
 
   /// Ảnh thật của hiện vật (điền link khi có; null → dùng ảnh placeholder).
   final String? imageUrl;
+
+  /// File thuyết minh do admin tải lên. `null` nghĩa là hiện vật này chưa có
+  /// bản thu — màn hình phải nói rõ chứ đừng hiện thanh phát chạy giả.
+  final String? audioUrl;
+
+  final String? videoUrl;
+
+  bool get hasAudio => audioUrl != null && audioUrl!.isNotEmpty;
 
   /// Ảnh thật đóng gói sẵn trong app (đường dẫn asset). Ưu tiên hơn [imageUrl].
   /// Dùng cho thumbnail và ảnh thường.

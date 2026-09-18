@@ -18,6 +18,9 @@ class MiniPlayerBar extends StatelessWidget {
       builder: (context, _) {
         final artifact = controller.artifact;
         if (artifact == null) return const SizedBox.shrink();
+        // Không có bản thu hoặc mở file hỏng thì đừng treo một thanh phát đứng
+        // im ở đáy màn hình — màn thuyết minh đã nói rõ lý do rồi.
+        if (controller.error != null) return const SizedBox.shrink();
 
         return SafeArea(
           bottom: false,

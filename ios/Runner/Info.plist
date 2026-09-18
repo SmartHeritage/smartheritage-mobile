@@ -68,5 +68,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- just_audio phát qua AVPlayer, mà AVPlayer chịu ràng buộc App Transport
+	     Security - khác với request API đi qua dart:io vốn không bị ATS soi.
+	     Backend dev phục vụ /uploads qua HTTP thuần nên không mở khoá này thì
+	     file thuyết minh không tải được. NSAllowsLocalNetworking chỉ nới cho
+	     localhost và mạng nội bộ; host công khai vẫn bắt buộc HTTPS. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

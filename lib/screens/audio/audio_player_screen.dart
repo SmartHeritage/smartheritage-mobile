@@ -97,6 +97,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
                   ),
                   _titleRow(artifact),
                   const SizedBox(height: 10),
+                  _statusLine(artifact, active),
                   _progressBar(artifact, progress, active),
                   const SizedBox(height: 4),
                   _controls(artifact, active),
@@ -214,8 +215,40 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     );
   }
 
+  /// Một dòng cho biết đang tải, lỗi, hay chưa có bản thu. Không có gì để nói
+  /// thì chiếm 0 chỗ, giữ nguyên bố cục cũ.
+  Widget _statusLine(Artifact artifact, bool active) {
+    final String? message;
+    if (!artifact.hasAudio) {
+      message = 'Hiện vật này chưa có bản thuyết minh.';
+    } else if (active && _controller.isLoading) {
+      message = 'Đang tải bản thuyết minh…';
+    } else if (active && _controller.error != null) {
+      message = _controller.error;
+    } else {
+      message = null;
+    }
+    if (message == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12.5,
+          color: Colors.white.withValues(alpha: 0.85),
+        ),
+      ),
+    );
+  }
+
   Widget _progressBar(Artifact artifact, double progress, bool active) {
-    final total = _parseDuration(artifact.audioDuration);
+    // Khi đang phát thì lấy độ dài thật do player đọc từ file; chưa phát thì
+    // tạm dùng con số backend ghi sẵn để thanh không nhảy lúc mới mở.
+    final total = active
+        ? _controller.duration
+        : parseDuration(artifact.audioDuration);
     final elapsed = total * progress;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -234,10 +267,12 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             ),
             child: Slider(
               value: progress,
-              onChanged: (v) {
-                if (!active) _controller.play(artifact);
-                _controller.seek(v);
-              },
+              onChanged: artifact.hasAudio
+                  ? (v) {
+                      if (!active) _controller.play(artifact);
+                      _controller.seek(v);
+                    }
+                  : null,
             ),
           ),
           Padding(
@@ -281,25 +316,39 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               color: Colors.white, size: 32),
         ),
         GestureDetector(
-          onTap: () {
-            if (!active) {
-              _controller.play(artifact);
-            } else {
-              _controller.togglePlay();
-            }
-          },
+          // Hiện vật chưa có bản thu thì nút không làm gì — bấm vào mà im lặng
+          // còn khó hiểu hơn là thấy nó mờ đi.
+          onTap: artifact.hasAudio
+              ? () {
+                  if (!active) {
+                    _controller.play(artifact);
+                  } else {
+                    _controller.togglePlay();
+                  }
+                }
+              : null,
           child: Container(
             width: 66,
             height: 66,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: artifact.hasAudio
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.4),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: AppColors.primaryDark,
-              size: 38,
-            ),
+            child: active && _controller.isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.6,
+                      color: AppColors.primaryDark,
+                    ),
+                  )
+                : Icon(
+                    playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: AppColors.primaryDark,
+                    size: 38,
+                  ),
           ),
         ),
         IconButton(
@@ -470,15 +519,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   );
 
   /// 'mm:ss' → Duration. Trả về zero nếu chuỗi không đúng dạng.
-  static Duration _parseDuration(String value) {
-    final parts = value.split(':');
-    if (parts.length != 2) return Duration.zero;
-    return Duration(
-      minutes: int.tryParse(parts[0]) ?? 0,
-      seconds: int.tryParse(parts[1]) ?? 0,
-    );
-  }
-
   static String _format(Duration d) {
     final safe = d.isNegative ? Duration.zero : d;
     final seconds = safe.inSeconds % 60;

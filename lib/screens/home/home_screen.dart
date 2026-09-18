@@ -57,8 +57,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (artifact == null || _sheetShown || !mounted) return;
     _scan.consumeDetection();
     // Phát thuyết minh ngay khi beacon phát hiện — khách không phải bấm gì.
-    // Nếu đang tắt tiếng thì vẫn chạy tiến trình, chỉ im lặng.
-    AudioPlayerController.instance.play(artifact);
+    // Nếu đang tắt tiếng thì vẫn chạy, chỉ im lặng. Hiện vật chưa có bản thu
+    // thì không gọi play: sheet sẽ nói rõ thay vì hứa suông.
+    if (artifact.hasAudio) {
+      AudioPlayerController.instance.play(artifact);
+    }
     _showBeaconSheet(artifact);
   }
 
@@ -436,7 +439,7 @@ class BeaconDetectedSheet extends StatelessWidget {
           const SizedBox(height: 18),
           // Thuyết minh đã tự phát khi beacon phát hiện; ở đây chỉ báo trạng
           // thái và cho khách tắt/bật tiếng.
-          const _BeaconAudioStatus(),
+          _BeaconAudioStatus(artifact: artifact),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -471,8 +474,45 @@ class BeaconDetectedSheet extends StatelessWidget {
 
 /// Dải trạng thái thuyết minh trong sheet beacon: báo đang phát hay đã tắt
 /// tiếng, kèm nút loa để khách tự quyết.
+/// Beacon bắt được hiện vật nhưng admin chưa tải bản thu lên. Nói thẳng ra
+/// thay vì hiện thanh "đang phát" rồi im lặng.
+class _BeaconNoAudioNotice extends StatelessWidget {
+  const _BeaconNoAudioNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.headset_off_outlined,
+              color: AppColors.textSecondary, size: 22),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Hiện vật này chưa có bản thuyết minh',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BeaconAudioStatus extends StatelessWidget {
-  const _BeaconAudioStatus();
+  const _BeaconAudioStatus({required this.artifact});
+
+  final Artifact artifact;
 
   @override
   Widget build(BuildContext context) {
@@ -480,6 +520,7 @@ class _BeaconAudioStatus extends StatelessWidget {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
+        if (!artifact.hasAudio) return const _BeaconNoAudioNotice();
         final muted = controller.isMuted;
         return Container(
           padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),

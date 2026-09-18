@@ -49,9 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(errorSnackBar(e.message));
     }
   }
 
@@ -69,9 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _notSupportedYet() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đăng nhập Google chưa được hỗ trợ')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(errorSnackBar('Đăng nhập Google chưa được hỗ trợ'));
   }
 
   @override

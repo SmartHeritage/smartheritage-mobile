@@ -59,8 +59,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(errorSnackBar(e.message));
     }
   }
 

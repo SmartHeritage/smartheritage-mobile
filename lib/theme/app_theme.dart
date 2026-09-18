@@ -113,3 +113,13 @@ class AppTheme {
     );
   }
 }
+
+/// SnackBar báo lỗi — nền đỏ thay cho nền xanh mặc định của theme.
+///
+/// `snackBarTheme` đặt nền xanh cho thông báo thành công, nên mọi thông báo
+/// thất bại phải tự đặt màu; không thì "sai email hoặc mật khẩu" cũng hiện
+/// xanh y như vừa đăng nhập xong.
+SnackBar errorSnackBar(String message) => SnackBar(
+      content: Text(message),
+      backgroundColor: AppColors.danger,
+    );

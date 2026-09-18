@@ -84,7 +84,7 @@ class _MapScreenState extends State<MapScreen> {
     };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+      ..showSnackBar(errorSnackBar(msg));
   }
 
   @override

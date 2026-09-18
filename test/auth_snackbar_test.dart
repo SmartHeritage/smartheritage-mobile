@@ -46,6 +46,10 @@ Widget _harness(Widget child) => MaterialApp(
       home: child,
     );
 
+/// Màu nền thực tế của snackbar đang hiện: `null` nghĩa là lấy theo theme.
+Color? _snackBarColor(WidgetTester tester) =>
+    tester.widget<SnackBar>(find.byType(SnackBar)).backgroundColor;
+
 Future<void> _fillLoginForm(WidgetTester tester) async {
   final fields = find.byType(TextFormField);
   await tester.enterText(fields.at(0), 'lenhatanh2411@gmail.com');
@@ -72,6 +76,9 @@ void main() {
 
     expect(find.text('Đăng nhập thành công'), findsOneWidget);
     expect(AuthController.instance.isLoggedIn, isTrue);
+    // Không tự đặt màu → lấy nền xanh mặc định của theme.
+    expect(_snackBarColor(tester), isNull);
+    expect(AppTheme.light.snackBarTheme.backgroundColor, AppColors.success);
   });
 
   testWidgets('snackbar vẫn sống sau khi màn đăng nhập bị pop', (tester) async {
@@ -116,6 +123,20 @@ void main() {
     expect(find.text('Invalid email or password'), findsOneWidget);
     expect(find.text('Đăng nhập thành công'), findsNothing);
     expect(AuthController.instance.isLoggedIn, isFalse);
+    // Lỗi phải đỏ, không được xanh như thông báo thành công.
+    expect(_snackBarColor(tester), AppColors.danger);
+  });
+
+  testWidgets('nút Google báo chưa hỗ trợ bằng snackbar đỏ', (tester) async {
+    _installAuth(MockClient((_) async => _json(_session())));
+    await tester.pumpWidget(_harness(const LoginScreen()));
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Tiếp tục với Google'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đăng nhập Google chưa được hỗ trợ'), findsOneWidget);
+    expect(_snackBarColor(tester), AppColors.danger);
+    expect(AuthController.instance.isLoggedIn, isFalse);
   });
 
   testWidgets('đăng xuất ở trang cá nhân thì hiện snackbar', (tester) async {
@@ -135,6 +156,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Đã đăng xuất'), findsOneWidget);
+    expect(_snackBarColor(tester), isNull);
     expect(AuthController.instance.isLoggedIn, isFalse);
   });
 

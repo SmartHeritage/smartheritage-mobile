@@ -34,9 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (!_agreed) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Vui lòng đồng ý với điều khoản sử dụng'),
-      ));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(errorSnackBar('Vui lòng đồng ý với điều khoản sử dụng'));
       return;
     }
     setState(() => _busy = true);
@@ -73,9 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(errorSnackBar(e.message));
     }
   }
 

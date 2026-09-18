@@ -71,9 +71,8 @@ class _FeedbackFormState extends State<FeedbackForm> {
 
   void _submit() {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Vui lòng chọn số sao đánh giá'),
-      ));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(errorSnackBar('Vui lòng chọn số sao đánh giá'));
       return;
     }
     // Lấy messenger trước khi pop — sau khi pop thì context không còn dùng được.

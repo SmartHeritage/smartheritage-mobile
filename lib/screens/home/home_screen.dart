@@ -656,7 +656,7 @@ class _FeaturedCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.92),
                         shape: BoxShape.circle,
                       ),
-                      child: FavoriteButton(artifactId: artifact.id),
+                      child: FavoriteButton(artifact: artifact),
                     ),
                   ),
                   Positioned(

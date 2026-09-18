@@ -397,19 +397,3 @@ class MockData {
     ),
   ];
 }
-
-/// Trạng thái yêu thích dùng chung cho toàn app (UI demo, chưa có backend).
-class FavoriteStore {
-  FavoriteStore._();
-
-  static final ValueNotifier<Set<String>> ids =
-      ValueNotifier<Set<String>>({'a1', 'a3'});
-
-  static bool isFavorite(String id) => ids.value.contains(id);
-
-  static void toggle(String id) {
-    final next = Set<String>.from(ids.value);
-    if (!next.remove(id)) next.add(id);
-    ids.value = next;
-  }
-}

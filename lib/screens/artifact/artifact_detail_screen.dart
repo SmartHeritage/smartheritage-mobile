@@ -58,7 +58,7 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
                   color: Colors.white.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
                 ),
-                child: FavoriteButton(artifactId: artifact.id),
+                child: FavoriteButton(artifact: artifact),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(

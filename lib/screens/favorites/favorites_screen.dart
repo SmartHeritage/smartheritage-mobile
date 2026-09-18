@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/artifact_repository.dart';
-import '../../data/mock_data.dart';
+import '../../data/favorite_repository.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
@@ -31,12 +30,17 @@ class FavoritesScreen extends StatelessWidget {
   }
 
   Widget _buildList() {
-    return ValueListenableBuilder<Set<String>>(
-        valueListenable: FavoriteStore.ids,
-        builder: (context, ids, _) {
-          final favorites = ArtifactRepository.instance.artifacts
-              .where((a) => ids.contains(a.id))
-              .toList();
+    final store = FavoriteRepository.instance;
+    return ListenableBuilder(
+        listenable: store,
+        builder: (context, _) {
+          // Lấy thẳng danh sách server trả về, không lọc từ danh sách hiện vật
+          // đang hiển thị — yêu thích có thể trỏ tới hiện vật không nằm trong
+          // trang hiện tại.
+          final favorites = store.artifacts;
+          if (store.isLoading && favorites.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
           if (favorites.isEmpty) {
             return Center(
               child: Column(

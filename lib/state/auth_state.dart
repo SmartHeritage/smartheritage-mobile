@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/favorite_repository.dart';
 import '../screens/auth/login_screen.dart';
 import '../services/api_client.dart';
 import '../services/token_store.dart';
@@ -94,6 +95,7 @@ class AuthController extends ChangeNotifier {
       if (data is Map<String, dynamic>) {
         _user = AppUser.fromJson(data);
         notifyListeners();
+        await FavoriteRepository.instance.load();
       }
     } on ApiException {
       // Token hỏng đã được ApiClient dọn; lỗi mạng thì để lần sau thử lại.
@@ -187,11 +189,15 @@ class AuthController extends ChangeNotifier {
       _user = AppUser.fromJson(rawUser);
     }
     notifyListeners();
+    // Yêu thích thuộc về tài khoản — có phiên rồi mới kéo về được.
+    await FavoriteRepository.instance.load();
   }
 
   void _clearSession() {
     if (_user == null) return;
     _user = null;
+    // Dữ liệu của người vừa đăng xuất không được ở lại cho người sau thấy.
+    FavoriteRepository.instance.clear();
     notifyListeners();
   }
 

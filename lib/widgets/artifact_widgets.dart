@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/favorite_repository.dart';
 import '../data/mock_data.dart';
 import '../screens/artifact/artifact_detail_screen.dart';
 import '../state/auth_state.dart';
@@ -126,38 +127,49 @@ class ArtifactImage extends StatelessWidget {
   }
 }
 
-/// Nút yêu thích đồng bộ với [FavoriteStore].
+/// Nút yêu thích, đồng bộ với [FavoriteRepository] (lưu trên server).
 class FavoriteButton extends StatelessWidget {
   const FavoriteButton({
     super.key,
-    required this.artifactId,
+    required this.artifact,
     this.color,
   });
 
-  final String artifactId;
+  final Artifact artifact;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<Set<String>>(
-      valueListenable: FavoriteStore.ids,
-      builder: (context, ids, _) {
-        final isFav = ids.contains(artifactId);
+    final favorites = FavoriteRepository.instance;
+    return ListenableBuilder(
+      listenable: favorites,
+      builder: (context, _) {
+        final isFav = favorites.isFavorite(artifact.id);
         return IconButton(
           onPressed: () async {
             // Yêu thích là dữ liệu theo dõi → yêu cầu đăng nhập.
             final ok = await AuthController.ensureLoggedIn(context);
             if (!ok || !context.mounted) return;
-            final wasFav = FavoriteStore.isFavorite(artifactId);
-            FavoriteStore.toggle(artifactId);
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(
-                content: Text(wasFav
-                    ? 'Đã xoá khỏi danh sách yêu thích'
-                    : 'Đã lưu vào danh sách yêu thích'),
-                duration: const Duration(seconds: 1),
-              ));
+
+            final messenger = ScaffoldMessenger.of(context);
+            final wasFav = favorites.isFavorite(artifact.id);
+            // toggle cập nhật giao diện ngay rồi mới gọi mạng; hỏng thì tự
+            // hoàn tác và trả false.
+            final saved = await favorites.toggle(artifact);
+
+            messenger.hideCurrentSnackBar();
+            if (!saved) {
+              messenger.showSnackBar(
+                errorSnackBar('Không lưu được thay đổi, vui lòng thử lại.'),
+              );
+              return;
+            }
+            messenger.showSnackBar(SnackBar(
+              content: Text(wasFav
+                  ? 'Đã xoá khỏi danh sách yêu thích'
+                  : 'Đã lưu vào danh sách yêu thích'),
+              duration: const Duration(seconds: 1),
+            ));
           },
           icon: Icon(
             isFav ? Icons.favorite : Icons.favorite_border,
@@ -254,7 +266,7 @@ class ArtifactListTile extends StatelessWidget {
                 ],
               ),
             ),
-            trailing ?? FavoriteButton(artifactId: artifact.id),
+            trailing ?? FavoriteButton(artifact: artifact),
           ],
         ),
       ),

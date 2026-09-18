@@ -209,7 +209,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               ],
             ),
           ),
-          FavoriteButton(artifactId: artifact.id, color: Colors.white),
+          FavoriteButton(artifact: artifact, color: Colors.white),
         ],
       ),
     );

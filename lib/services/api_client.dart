@@ -53,6 +53,9 @@ class ApiClient {
   Future<dynamic> post(String path, {Object? body}) =>
       _send('POST', path, body: body);
 
+  Future<dynamic> put(String path, {Object? body}) =>
+      _send('PUT', path, body: body);
+
   Future<dynamic> patch(String path, {Object? body}) =>
       _send('PATCH', path, body: body);
 

@@ -178,6 +178,36 @@ class AppNotification {
   final String? artifactId;
 }
 
+/// Một bản tin của bảo tàng.
+///
+/// Dữ liệu mẫu: backend chưa có endpoint tin tức (`/news`, `/articles`,
+/// `/posts`, `/events` đều trả 404). Khi có rồi thì thêm `fromJson` ở đây và
+/// một repository giống [Artifact], phần hiển thị không phải đổi.
+class NewsItem {
+  const NewsItem({
+    required this.id,
+    required this.title,
+    required this.summary,
+    required this.dateLabel,
+    required this.imageAsset,
+    required this.body,
+  });
+
+  final String id;
+  final String title;
+  final String summary;
+  final String dateLabel;
+
+  /// Nội dung đầy đủ cho trang chi tiết. Để dạng HTML vì khi backend có
+  /// endpoint tin tức thì nội dung sẽ do trình soạn thảo admin sinh ra, giống
+  /// `Artifact.description` — [RichTextContent] dựng được cả hai dạng.
+  final String body;
+
+  /// Ảnh bìa. Tạm mượn ảnh hiện vật có sẵn trong app cho tới khi ban quản lý
+  /// tải ảnh tin thật lên.
+  final String imageAsset;
+}
+
 class MockData {
   MockData._();
 
@@ -394,6 +424,71 @@ class MockData {
       body: 'Khu di tích mở cửa tới 21h trong ba ngày lễ, có tour đêm kèm '
           'thuyết minh trực tiếp.',
       timeLabel: '12/07/2026',
+    ),
+  ];
+  static const news = <NewsItem>[
+    NewsItem(
+      id: 'tin1',
+      title: 'Mở cửa trưng bày chuyên đề "Gốm Việt qua các triều đại"',
+      summary: 'Hơn 80 hiện vật gốm từ thời Lý đến thời Nguyễn, trưng bày tại '
+          'Khu C đến hết tháng sau.',
+      dateLabel: '24/09/2026',
+      imageAsset: 'assets/images/gom_hoa_nau.jpg',
+      body: '<p>Trưng bày chuyên đề mở cửa từ hôm nay tại Khu trưng bày C, '
+          'giới thiệu hơn 80 hiện vật gốm trải dài từ thời Lý đến thời '
+          'Nguyễn.</p>'
+          '<p>Điểm nhấn của trưng bày là nhóm gốm hoa nâu thời Trần, dòng gốm '
+          'đặc trưng với kỹ thuật khắc chìm rồi tô men nâu lên phần nền. Nhiều '
+          'hiện vật trong nhóm này lần đầu ra mắt công chúng sau khi hoàn tất '
+          'bảo quản.</p>'
+          '<p>Trưng bày kéo dài đến hết tháng sau, mở cửa theo giờ thường '
+          'ngày. Khách tham quan nghe được thuyết minh tự động khi đến gần '
+          'từng hiện vật.</p>',
+    ),
+    NewsItem(
+      id: 'tin2',
+      title: 'Hoàn tất số hoá bản thuyết minh cho toàn bộ bảo vật quốc gia',
+      summary: 'Khách tham quan nghe được thuyết minh ngay khi đến gần hiện '
+          'vật, không cần thao tác gì thêm.',
+      dateLabel: '18/09/2026',
+      imageAsset: 'assets/images/trong_dong_dong_son.jpg',
+      body: '<p>Toàn bộ bảo vật quốc gia đang lưu giữ tại bảo tàng đã có bản '
+          'thuyết minh số hoá, hoàn tất sớm hơn kế hoạch một tháng.</p>'
+          '<p>Mỗi hiện vật được gắn một thiết bị phát tín hiệu đặt trong tủ '
+          'trưng bày. Khách mở ứng dụng và đến gần, bản thuyết minh tự phát mà '
+          'không cần bấm hay quét mã.</p>'
+          '<p>Giai đoạn tiếp theo sẽ mở rộng sang nhóm hiện vật trưng bày '
+          'ngoài trời, dự kiến hoàn thành trong quý sau.</p>',
+    ),
+    NewsItem(
+      id: 'tin3',
+      title: 'Tour đêm cuối tuần kèm thuyết minh trực tiếp',
+      summary: 'Mở cửa tới 21h thứ Bảy và Chủ nhật, có hướng dẫn viên đi cùng '
+          'theo từng nhóm nhỏ.',
+      dateLabel: '11/09/2026',
+      imageAsset: 'assets/images/an_vang_trieu_nguyen.jpg',
+      body: '<p>Từ tuần này, bảo tàng mở cửa tới 21h vào thứ Bảy và Chủ nhật, '
+          'kèm tour có hướng dẫn viên đi cùng.</p>'
+          '<p>Mỗi tour giới hạn 15 khách để giữ không gian yên tĩnh. Lộ trình '
+          'đi qua ba khu trưng bày chính, dừng lâu hơn ở nhóm bảo vật quốc '
+          'gia.</p>'
+          '<p>Vé đăng ký trực tiếp tại quầy lễ tân hoặc qua tổng đài của bảo '
+          'tàng.</p>',
+    ),
+    NewsItem(
+      id: 'tin4',
+      title: 'Tiếp nhận sưu tập súng thần công thời Nguyễn',
+      summary: 'Bốn khẩu thần công được hiến tặng, đang trong quá trình bảo '
+          'quản trước khi đưa ra trưng bày.',
+      dateLabel: '02/09/2026',
+      imageAsset: 'assets/images/sung_than_cong.jpg',
+      body: '<p>Bảo tàng vừa tiếp nhận bốn khẩu súng thần công thời Nguyễn do '
+          'một gia đình tại địa phương hiến tặng.</p>'
+          '<p>Cả bốn khẩu đang trong quá trình xử lý gỉ sét và ổn định bề mặt '
+          'kim loại. Công việc này mất khoảng ba tháng trước khi hiện vật đủ '
+          'điều kiện đưa ra trưng bày.</p>'
+          '<p>Sau khi hoàn tất, nhóm hiện vật sẽ được đặt tại sân trước cùng '
+          'bản thuyết minh riêng.</p>',
     ),
   ];
 }

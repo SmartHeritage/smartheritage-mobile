@@ -91,7 +91,7 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
                   _IntroTab(artifact: artifact),
                   _GalleryTab(artifact: artifact),
                   _VideoTab(artifact: artifact),
-                  FeedbackForm(artifact: artifact),
+                  ArtifactReviewsTab(artifact: artifact),
                 ],
               ),
             ),

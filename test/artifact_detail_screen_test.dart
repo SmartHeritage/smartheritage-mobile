@@ -1,7 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:smartheritage/data/mock_data.dart';
+import 'package:smartheritage/data/review_repository.dart';
+import 'package:smartheritage/services/api_client.dart';
+import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/screens/artifact/artifact_detail_screen.dart';
 import 'package:smartheritage/screens/audio/audio_player_screen.dart';
 import 'package:smartheritage/state/audio_player_state.dart';
@@ -24,9 +31,34 @@ Widget _harness(Artifact artifact, {int initialTabIndex = 0}) {
   );
 }
 
+/// Ghi lại các đánh giá đã gửi, không đụng mạng.
+late List<Map<String, dynamic>> submittedReviews;
+
 void main() {
   // Kích thước logic của iPhone 17 Pro — nơi hàng era + zone từng tràn 3.6px.
-  setUp(() => TestWidgetsFlutterBinding.ensureInitialized());
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    submittedReviews = [];
+    ReviewRepository.instance = ReviewRepository(
+      api: ApiClient(
+        baseUrl: 'http://test.local/api/v1',
+        httpClient: MockClient((req) async {
+          if (req.method == 'POST') {
+            submittedReviews.add(jsonDecode(req.body) as Map<String, dynamic>);
+            return http.Response('{}', 201);
+          }
+          return http.Response('[]', 200);
+        }),
+      ),
+    );
+    // Gửi đánh giá yêu cầu đăng nhập; không có phiên thì nút chỉ mở màn đăng nhập.
+    AuthController.instance.setTestSession();
+  });
+
+  tearDown(() {
+    AuthController.instance.resetForTest();
+    ReviewRepository.instance = ReviewRepository();
+  });
 
   tearDown(() => AudioPlayerController.instance.close());
 
@@ -131,6 +163,8 @@ void main() {
 
     expect(find.text('Cảm ơn bạn! Phản hồi đã được gửi thành công.'),
         findsOneWidget);
+    // Và lần này phản hồi thật sự được gửi đi, không chỉ hiện snackbar.
+    expect(submittedReviews.single['rating'], 5);
     // Vẫn ở trang chi tiết, và form đã xoá để gửi tiếp được — dùng nhãn số sao
     // thay vì đếm icon star_rounded, vì title block cũng có một icon như vậy.
     expect(find.text('Điều gì khiến bạn ấn tượng?'), findsOneWidget);

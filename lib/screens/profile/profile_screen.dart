@@ -377,12 +377,19 @@ class ProfileScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () async {
-              // Giữ sẵn messenger gốc: dialogContext chết ngay sau pop, mà
-              // logout thì còn phải chờ mạng.
+              // Giữ sẵn messenger và navigator: dialogContext chết ngay sau
+              // pop, mà logout thì còn phải chờ mạng. Lấy trước cả hai để
+              // không chạm vào BuildContext sau await.
               final messenger = ScaffoldMessenger.of(dialogContext);
+              final navigator = Navigator.of(context);
               Navigator.of(dialogContext).pop();
               // Đăng xuất về chế độ khách, vẫn ở trong app.
               await AuthController.instance.logout();
+              // Về trang chủ. Đăng xuất xong mà còn đứng ở trang tài khoản
+              // rỗng thì vô nghĩa; popUntil dọn luôn cả route chồng lên nếu
+              // khách đi sâu hơn. Ở bản V1 trang này là tab trong IndexedStack
+              // chứ không phải route, nên popUntil là no-op và tab giữ nguyên.
+              navigator.popUntil((route) => route.isFirst);
               messenger
                 ..hideCurrentSnackBar()
                 ..showSnackBar(

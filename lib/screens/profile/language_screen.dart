@@ -12,13 +12,11 @@ class LanguageScreen extends StatefulWidget {
 class _LanguageScreenState extends State<LanguageScreen> {
   String _selected = 'vi';
 
+  /// Chỉ hai ngôn ngữ — đây là những thứ tiếng thực sự có bản dịch nội dung.
+  /// Thêm dòng mới vào đây khi bảo tàng có bản thuyết minh tương ứng.
   static const _languages = [
     ('vi', '🇻🇳', 'Tiếng Việt', 'Vietnamese'),
     ('en', '🇬🇧', 'English', 'Tiếng Anh'),
-    ('fr', '🇫🇷', 'Français', 'Tiếng Pháp'),
-    ('ja', '🇯🇵', '日本語', 'Tiếng Nhật'),
-    ('ko', '🇰🇷', '한국어', 'Tiếng Hàn'),
-    ('zh', '🇨🇳', '中文', 'Tiếng Trung'),
   ];
 
   @override

@@ -254,11 +254,17 @@ class ArtifactListTile extends StatelessWidget {
                       const Icon(Icons.place_outlined,
                           size: 15, color: AppColors.accent),
                       const SizedBox(width: 2),
-                      Text(
-                        artifact.zone,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
+                      // Tên khu trưng bày dài (vd. "Khu trưng bày ngoài trời")
+                      // làm tràn hàng trên máy hẹp — cắt bớt thay vì đẩy lố.
+                      Expanded(
+                        child: Text(
+                          artifact.zone,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],

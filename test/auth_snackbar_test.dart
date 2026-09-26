@@ -131,7 +131,11 @@ void main() {
     _installAuth(MockClient((_) async => _json(_session())));
     await tester.pumpWidget(_harness(const LoginScreen()));
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Tiếp tục với Google'));
+    // Nút nằm cuối trang, phải cuộn tới trước khi bấm.
+    final google = find.widgetWithText(OutlinedButton, 'Tiếp tục với Google');
+    await tester.ensureVisible(google);
+    await tester.pumpAndSettle();
+    await tester.tap(google);
     await tester.pumpAndSettle();
 
     expect(find.text('Đăng nhập Google chưa được hỗ trợ'), findsOneWidget);

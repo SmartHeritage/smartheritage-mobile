@@ -74,6 +74,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // AppBar trong suốt, không tiêu đề: chỉ để lấy nút back. Màn hình này
+      // luôn được push (từ AuthController.ensureLoggedIn), nên không có nút
+      // quay lại thì khách bị kẹt, phải đăng nhập mới thoát ra được.
+      // AppBar tự ẩn nút khi không pop được, nên đây vẫn an toàn nếu sau này
+      // có luồng mở thẳng vào màn đăng nhập.
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -82,7 +92,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
+                // Trước là 40; AppBar đã chiếm phần khoảng thở phía trên.
+                const SizedBox(height: 8),
                 Center(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:smartheritage/data/artifact_repository.dart';
 import 'package:smartheritage/data/favorite_repository.dart';
 import 'package:smartheritage/data/mock_data.dart';
 import 'package:smartheritage/services/api_client.dart';
@@ -34,8 +35,10 @@ Map<String, dynamic> _apiArtifact(String id, String name) => {
 Artifact _artifact(String id) =>
     Artifact.fromJson(_apiArtifact(id, 'Trống đồng Đông Sơn'));
 
-FavoriteRepository _repo(MockClient mock) => FavoriteRepository(
+FavoriteRepository _repo(MockClient mock, {ArtifactRepository? catalog}) =>
+    FavoriteRepository(
       api: ApiClient(httpClient: mock, baseUrl: _base),
+      catalog: catalog ?? ArtifactRepository(),
     );
 
 void main() {
@@ -175,5 +178,42 @@ void main() {
     // Dữ liệu của người vừa đăng xuất không được ở lại cho người sau.
     expect(repo.artifacts, isEmpty);
     expect(repo.ids, isEmpty);
+  });
+
+  test('backend trả entity thô thì lấy bản đầy đủ từ danh mục /artifacts',
+      () async {
+    // GET /favorites của backend mới không có shortIntro/imageUrl/audioUrl.
+    final raw = {
+      'id': 'uuid-1',
+      'name': 'Trống đồng Đông Sơn',
+      'era': 'Thời Lý',
+      'attractionId': 'attr-a',
+      'status': 'PUBLISHED',
+      'rating': 4.5,
+      'reviewCount': 2,
+    };
+    final catalog = ArtifactRepository()
+      ..setArtifactsForTest([
+        Artifact.fromJson({
+          ...raw,
+          'shortIntro': 'Tóm tắt đầy đủ.',
+          'audioUrl': 'https://cdn.example/a.mp3',
+        }),
+      ]);
+    final repo = _repo(MockClient((_) async => _json([raw])), catalog: catalog);
+
+    await repo.load();
+
+    expect(repo.artifacts.single.shortIntro, 'Tóm tắt đầy đủ.');
+    expect(repo.artifacts.single.hasAudio, isTrue);
+  });
+
+  test('danh mục chưa có hiện vật thì vẫn hiện bản thô', () async {
+    final repo = _repo(MockClient(
+        (_) async => _json([_apiArtifact('uuid-9', 'Hiện vật lạ')])));
+
+    await repo.load();
+
+    expect(repo.artifacts.single.name, 'Hiện vật lạ');
   });
 }

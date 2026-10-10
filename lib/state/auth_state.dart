@@ -147,11 +147,15 @@ class AuthController extends ChangeNotifier {
     String? fullName,
     String? phone,
     String? gender,
+    String? preferredLanguage,
   }) async {
     final body = <String, dynamic>{};
     if (fullName != null) body['fullName'] = fullName;
     if (phone != null) body['phone'] = phone;
     if (gender != null) body['gender'] = gender;
+    if (preferredLanguage != null) {
+      body['preferredLanguage'] = preferredLanguage;
+    }
     if (body.isEmpty) return;
 
     final data = await _api.patch('/auth/me', body: body);

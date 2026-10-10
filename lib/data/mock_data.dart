@@ -28,6 +28,7 @@ class Artifact {
     this.mapY = 0.5,
     this.lat = MockData.siteLat,
     this.lng = MockData.siteLng,
+    this.attractionId,
   });
 
   /// Dựng từ JSON của `GET /artifacts` (smartheritage-BE).
@@ -36,14 +37,26 @@ class Artifact {
   /// ảnh đóng gói trong app, cách căn khung, toạ độ GPS — không có trong
   /// contract, nên lấy từ bản mock cùng tên; hiện vật lạ thì rơi về mặc định.
   /// Ghép theo `name` vì id của backend là UUID, không trùng id mock 'a1'..'a5'.
-  factory Artifact.fromJson(Map<String, dynamic> json) {
+  ///
+  /// Backend đã bỏ Zone: hiện vật thuộc về một Attraction qua `attractionId`.
+  /// [attractionNames] (id → tên, từ `GET /attractions`) cho phép hiển thị tên
+  /// điểm tham quan ở đúng chỗ trước đây hiện tên khu trưng bày.
+  factory Artifact.fromJson(
+    Map<String, dynamic> json, {
+    Map<String, String> attractionNames = const {},
+  }) {
     final name = (json['name'] as String?) ?? '';
     final decor = MockData.decorFor(name);
+    final lat = _toDouble(json['latitude']);
+    final lng = _toDouble(json['longitude']);
+    final hasCoords = lat != null && lng != null;
     return Artifact(
       id: json['id'] as String,
       name: name,
       era: (json['era'] as String?) ?? '',
-      zone: (json['zone'] as String?) ?? '',
+      zone: attractionNames[json['attractionId']] ??
+          (json['zone'] as String?) ??
+          '',
       shortIntro: (json['shortIntro'] as String?) ?? '',
       description: (json['description'] as String?) ?? '',
       icon: decor?.icon ?? Icons.museum_outlined,
@@ -62,8 +75,10 @@ class Artifact {
       detailImageAlignment: decor?.detailImageAlignment ?? Alignment.center,
       mapX: _toDouble(json['mapX']) ?? 0.5,
       mapY: _toDouble(json['mapY']) ?? 0.5,
-      lat: decor?.lat ?? MockData.siteLat,
-      lng: decor?.lng ?? MockData.siteLng,
+      // Hiện vật PUBLISHED luôn có toạ độ thật; bản mock chỉ còn là đường lui.
+      lat: hasCoords ? lat : (decor?.lat ?? MockData.siteLat),
+      lng: hasCoords ? lng : (decor?.lng ?? MockData.siteLng),
+      attractionId: json['attractionId'] as String?,
     );
   }
 
@@ -83,10 +98,30 @@ class Artifact {
 
   /// Media do backend phục vụ trả về đường dẫn tương đối (`/uploads/...`).
   /// Ghép với origin của API — bỏ đuôi `/api/v1` — để Image.network dùng được.
+  ///
+  /// Một số route (`/artifacts/:id/media`, `floorPlanUrl`) lại trả URL tuyệt
+  /// đối theo `PUBLIC_BASE_URL` của backend, mặc định `http://localhost:3000`.
+  /// Trên Android emulator hay máy thật, `localhost` là chính cái máy đó — nên
+  /// URL trỏ về localhost được đổi sang đúng host mà app đang gọi API.
   static String? resolveMediaUrl(String? raw) {
     if (raw == null || raw.isEmpty) return null;
-    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
     final base = Uri.parse(AppConfig.apiBaseUrl);
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      final uri = Uri.tryParse(raw);
+      const loopback = {'localhost', '127.0.0.1'};
+      if (uri == null ||
+          !loopback.contains(uri.host) ||
+          uri.host == base.host) {
+        return raw;
+      }
+      return uri
+          .replace(
+            scheme: base.scheme,
+            host: base.host,
+            port: base.hasPort ? base.port : null,
+          )
+          .toString();
+    }
     return Uri(
       scheme: base.scheme,
       host: base.host,
@@ -137,9 +172,13 @@ class Artifact {
   final double mapX;
   final double mapY;
 
-  /// Toạ độ địa lý thật của hiện vật (dùng cho bản đồ OpenStreetMap).
+  /// Toạ độ địa lý thật của hiện vật (dùng cho bản đồ OpenStreetMap) — lấy từ
+  /// `latitude`/`longitude` của backend.
   final double lat;
   final double lng;
+
+  /// Điểm tham quan chứa hiện vật (backend). `null` với dữ liệu mock.
+  final String? attractionId;
 }
 
 class VisitRecord {

@@ -21,31 +21,42 @@ http.Response _json(Object body, [int status = 200]) => http.Response.bytes(
       headers: const {'content-type': 'application/json; charset=utf-8'},
     );
 
-/// Một hiện vật đúng shape backend trả về, trùng tên với bản mock để kiểm tra
-/// phần trình bày có được ghép vào không.
+/// Một hiện vật đúng shape backend mới trả về (không còn `zone`; thuộc về một
+/// Attraction qua `attractionId`), trùng tên với bản mock để kiểm tra phần
+/// trình bày có được ghép vào không.
 Map<String, dynamic> _apiArtifact({
   String id = 'uuid-1',
   String name = 'Trống đồng Đông Sơn',
-  String zone = 'Khu trưng bày A',
+  String? attractionId = 'attr-a',
+  double? latitude,
+  double? longitude,
 }) =>
     {
       'id': id,
       'name': name,
       'era': 'Văn hoá Đông Sơn · TK VII TCN',
-      'zone': zone,
-      'zoneId': 'zone-uuid',
+      'attractionId': attractionId,
+      'status': 'PUBLISHED',
+      'latitude': latitude,
+      'longitude': longitude,
       'shortIntro': 'Biểu tượng rực rỡ của nền văn minh Việt cổ.',
       'description': 'Mô tả dài.',
       'rating': 4.8,
       'reviewCount': 4,
       'audioDuration': '03:45',
       'videoDuration': '02:10',
-      'mapX': 0.26,
-      'mapY': 0.3,
+      'mapX': null,
+      'mapY': null,
       'imageUrl': null,
       'audioUrl': null,
       'videoUrl': null,
     };
+
+final _attractions = [
+  {'id': 'attr-a', 'name': 'Điện Kính Thiên', 'tourismAreaId': 'area-1'},
+  {'id': 'attr-b', 'name': 'Đoan Môn', 'tourismAreaId': 'area-1'},
+  {'id': 'attr-empty', 'name': 'Hậu Lâu', 'tourismAreaId': 'area-1'},
+];
 
 ArtifactRepository _repo(MockClient mock) => ArtifactRepository(
       api: ApiClient(httpClient: mock, baseUrl: _base),
@@ -81,6 +92,24 @@ void main() {
       expect(artifact.lat, MockData.siteLat);
     });
 
+    test('toạ độ thật từ backend thắng toạ độ mock', () {
+      final artifact = Artifact.fromJson(
+        _apiArtifact(latitude: 21.04, longitude: 105.84),
+      );
+
+      expect(artifact.lat, 21.04);
+      expect(artifact.lng, 105.84);
+    });
+
+    test('tên khu lấy từ attraction theo attractionId', () {
+      final artifact = Artifact.fromJson(
+        _apiArtifact(),
+        attractionNames: const {'attr-a': 'Điện Kính Thiên'},
+      );
+
+      expect(artifact.zone, 'Điện Kính Thiên');
+    });
+
     test('nhận rating dạng chuỗi (cột numeric của Postgres)', () {
       final json = _apiArtifact()..['rating'] = '4.3';
       expect(Artifact.fromJson(json).rating, 4.3);
@@ -111,6 +140,17 @@ void main() {
       );
     });
 
+    test('URL tuyệt đối trỏ localhost thì đổi sang host của API', () {
+      // /media và floorPlanUrl được backend ghép sẵn theo PUBLIC_BASE_URL.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+      expect(
+        Artifact.resolveMediaUrl('http://localhost:3000/uploads/images/a.jpg'),
+        'http://10.0.2.2:3000/uploads/images/a.jpg',
+      );
+    });
+
     test('imageUrl tuyệt đối thì giữ nguyên', () {
       final json = _apiArtifact()
         ..['imageUrl'] = 'https://upload.wikimedia.org/a.jpg';
@@ -126,38 +166,47 @@ void main() {
       final repo = _repo(MockClient((_) async => http.Response('[]', 200)));
 
       expect(repo.artifacts, same(MockData.artifacts));
-      expect(repo.zones.first, 'Tất cả');
+      expect(repo.attractions, isEmpty);
       expect(repo.isOffline, isFalse);
     });
 
-    test('tải xong thì thay bằng dữ liệu API và dựng bộ lọc từ /zones',
+    test('tải xong thì thay bằng dữ liệu API, tên khu lấy từ /attractions',
         () async {
+      final paths = <String>[];
       final repo = _repo(MockClient((req) async {
-        if (req.url.path.endsWith('/zones')) {
-          return _json([
-            {'id': 'z1', 'name': 'Khu trưng bày A'},
-            {'id': 'z2', 'name': 'Khu trưng bày B'},
-          ]);
-        }
+        paths.add(req.url.path);
+        if (req.url.path.endsWith('/attractions')) return _json(_attractions);
         return _json([
           _apiArtifact(),
           _apiArtifact(
-              id: 'uuid-2', name: 'Súng thần công', zone: 'Sân ngoài trời'),
+              id: 'uuid-2', name: 'Súng thần công', attractionId: 'attr-b'),
         ]);
       }));
 
       await repo.refresh();
 
       expect(repo.artifacts.map((a) => a.id), ['uuid-1', 'uuid-2']);
-      // 'Sân ngoài trời' không có trong bảng zones nhưng hiện vật vẫn thuộc về
-      // nó — bộ lọc phải gộp thêm, không thì hiện vật đó không lọc ra được.
-      expect(repo.zones, [
-        'Tất cả',
-        'Khu trưng bày A',
-        'Khu trưng bày B',
-        'Sân ngoài trời',
-      ]);
+      expect(repo.artifacts.map((a) => a.zone), ['Điện Kính Thiên', 'Đoan Môn']);
+      expect(repo.attractions.map((a) => a.name),
+          ['Điện Kính Thiên', 'Đoan Môn', 'Hậu Lâu']);
+      // Backend mới không còn /zones — gọi tới là ăn 404.
+      expect(paths.any((p) => p.endsWith('/zones')), isFalse);
       expect(repo.isOffline, isFalse);
+    });
+
+    test('/attractions hỏng thì vẫn hiện hiện vật thật', () async {
+      final repo = _repo(MockClient((req) async {
+        if (req.url.path.endsWith('/attractions')) {
+          return _json({'message': 'boom'}, 500);
+        }
+        return _json([_apiArtifact()]);
+      }));
+
+      await repo.refresh();
+
+      expect(repo.artifacts.map((a) => a.id), ['uuid-1']);
+      expect(repo.artifacts.single.zone, isEmpty);
+      expect(repo.attractions, isEmpty);
     });
 
     test('mất mạng thì giữ dữ liệu mock và bật cờ isOffline', () async {
@@ -182,7 +231,7 @@ void main() {
 
     test('tryById trả null cho id lạ, byId thì rơi về hiện vật đầu', () async {
       final repo = _repo(MockClient((req) async {
-        if (req.url.path.endsWith('/zones')) return _json([]);
+        if (req.url.path.endsWith('/attractions')) return _json([]);
         return _json([_apiArtifact()]);
       }));
       await repo.refresh();
@@ -196,15 +245,15 @@ void main() {
       var calls = 0;
       final repo = _repo(MockClient((req) async {
         calls++;
-        if (req.url.path.endsWith('/zones')) return _json([]);
+        if (req.url.path.endsWith('/attractions')) return _json([]);
         return _json([_apiArtifact()]);
       }));
 
       await repo.ensureLoaded();
       await repo.ensureLoaded();
 
-      // 2 = một /artifacts + một /zones của lần tải duy nhất.
-      expect(calls, 2);
+      // 3 = /artifacts + /attractions + /tourism-areas của lần tải duy nhất.
+      expect(calls, 3);
     });
   });
 }

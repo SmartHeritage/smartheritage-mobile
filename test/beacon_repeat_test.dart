@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:smartheritage/data/artifact_repository.dart';
+import 'package:smartheritage/data/beacon_repository.dart';
 import 'package:smartheritage/data/mock_data.dart';
 import 'package:smartheritage/screens/home/home_screen.dart';
+import 'package:smartheritage/services/api_client.dart';
 import 'package:smartheritage/state/audio_player_state.dart';
 import 'package:smartheritage/state/beacon_scan_state.dart';
 import 'package:smartheritage/widgets/app_sidebar.dart';
@@ -29,6 +33,14 @@ void main() {
   late DateTime now;
 
   setUp(() {
+    // Backend không trả lời → bộ quét rơi về chọn hiện vật trong danh mục,
+    // đúng luồng các test này mô tả. Không để test phụ thuộc mạng thật.
+    BeaconRepository.instance = BeaconRepository(
+      api: ApiClient(
+        httpClient: MockClient((_) async => http.Response('', 503)),
+        baseUrl: 'http://test.local/api/v1',
+      ),
+    );
     scan.stopScan();
     now = DateTime(2026, 9, 19, 10);
     scan.clockForTest = () => now;

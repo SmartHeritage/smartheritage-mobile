@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../services/api_client.dart';
+import 'artifact_repository.dart';
 import 'mock_data.dart';
 
 /// Danh sách hiện vật yêu thích, lưu trên server theo tài khoản.
@@ -11,7 +12,13 @@ import 'mock_data.dart';
 /// Yêu thích gắn với tài khoản nên khách chưa đăng nhập không có gì để đồng
 /// bộ — [load] và [toggle] chỉ có nghĩa sau khi đăng nhập.
 class FavoriteRepository extends ChangeNotifier {
-  FavoriteRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
+  FavoriteRepository({ApiClient? api, ArtifactRepository? catalog})
+      : _api = api ?? ApiClient.instance,
+        _catalog = catalog ?? ArtifactRepository.instance {
+    // Danh mục tải xong sau khi đã có danh sách yêu thích thì phải vẽ lại, để
+    // thẻ yêu thích nhận được ảnh/mô tả đầy đủ.
+    _catalog.addListener(notifyListeners);
+  }
 
   static FavoriteRepository? _instance;
 
@@ -21,13 +28,20 @@ class FavoriteRepository extends ChangeNotifier {
   static set instance(FavoriteRepository repository) => _instance = repository;
 
   final ApiClient _api;
+  final ArtifactRepository _catalog;
 
   List<Artifact> _artifacts = const [];
   Set<String> _ids = const {};
   bool _isLoading = false;
 
-  /// Hiện vật yêu thích, đầy đủ thông tin do `GET /favorites` trả về.
-  List<Artifact> get artifacts => _artifacts;
+  /// Hiện vật yêu thích.
+  ///
+  /// `GET /favorites` của backend mới trả entity thô: không có `shortIntro`,
+  /// `description`, `imageUrl`, `audioUrl` (những trường đó chỉ được suy ra ở
+  /// `GET /artifacts`). Nên ưu tiên bản đầy đủ trong danh mục, chỉ rơi về bản
+  /// thô khi danh mục chưa có hiện vật đó.
+  List<Artifact> get artifacts =>
+      _artifacts.map((a) => _catalog.tryById(a.id) ?? a).toList();
 
   Set<String> get ids => _ids;
 
@@ -85,6 +99,12 @@ class FavoriteRepository extends ChangeNotifier {
     _artifacts = const [];
     _ids = const {};
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _catalog.removeListener(notifyListeners);
+    super.dispose();
   }
 
   void _applyLocal(Artifact artifact, {required bool favorite}) {

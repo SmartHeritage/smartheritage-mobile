@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../state/language_state.dart';
 import '../../theme/app_theme.dart';
 
 class LanguageScreen extends StatefulWidget {
@@ -10,14 +11,30 @@ class LanguageScreen extends StatefulWidget {
 }
 
 class _LanguageScreenState extends State<LanguageScreen> {
-  String _selected = 'vi';
+  String _selected = LanguageController.instance.code;
+  bool _saving = false;
 
-  /// Chỉ hai ngôn ngữ — đây là những thứ tiếng thực sự có bản dịch nội dung.
-  /// Thêm dòng mới vào đây khi bảo tàng có bản thuyết minh tương ứng.
-  static const _languages = [
-    ('vi', '🇻🇳', 'Tiếng Việt', 'Vietnamese'),
-    ('en', '🇬🇧', 'English', 'Tiếng Anh'),
-  ];
+  /// Lấy theo những ngôn ngữ backend thực sự có nội dung (`language.available`
+  /// của hiện vật); chưa biết thì dùng hai thứ tiếng app có sẵn.
+  List<(String, String, String, String)> get _languages => [
+        for (final code in LanguageController.instance.choices)
+          switch (LanguageController.labels[code]) {
+            (final flag, final name, final sub)? => (code, flag, name, sub),
+            null => (code, '🌐', code.toUpperCase(), code),
+          },
+      ];
+
+  Future<void> _confirm() async {
+    setState(() => _saving = true);
+    final savedToAccount = await LanguageController.instance.select(_selected);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).pop();
+    messenger.showSnackBar(savedToAccount
+        ? const SnackBar(content: Text('Đã cập nhật ngôn ngữ hiển thị'))
+        : errorSnackBar(
+            'Đã đổi ngôn ngữ trên máy này nhưng chưa lưu được vào tài khoản.'));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,13 +128,14 @@ class _LanguageScreenState extends State<LanguageScreen> {
             ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Đã cập nhật ngôn ngữ hiển thị'),
-              ));
-            },
-            child: const Text('Xác nhận'),
+            onPressed: _saving ? null : _confirm,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  )
+                : const Text('Xác nhận'),
           ),
         ],
       ),

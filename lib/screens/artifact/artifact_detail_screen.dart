@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
@@ -291,13 +292,109 @@ class _IntroTab extends StatelessWidget {
   }
 }
 
-class _GalleryTab extends StatelessWidget {
+class _GalleryTab extends StatefulWidget {
   const _GalleryTab({required this.artifact});
 
   final Artifact artifact;
 
   @override
+  State<_GalleryTab> createState() => _GalleryTabState();
+}
+
+/// Ảnh thật từ `GET /artifacts/:id/media`. Chưa có ảnh nào (hoặc không gọi
+/// được backend) thì giữ khung minh hoạ như cũ thay vì để tab trống trơn.
+class _GalleryTabState extends State<_GalleryTab> {
+  late final Future<List<GalleryImage>> _images = ArtifactRepository.instance
+      .fetchImages(widget.artifact.id)
+      .catchError((Object _) => const <GalleryImage>[]);
+
+  Artifact get artifact => widget.artifact;
+
+  @override
   Widget build(BuildContext context) {
+    return FutureBuilder<List<GalleryImage>>(
+      future: _images,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final images = snapshot.data ?? const [];
+        return images.isEmpty ? _placeholder(context) : _gallery(images);
+      },
+    );
+  }
+
+  Widget _gallery(List<GalleryImage> images) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
+      ),
+      itemCount: images.length,
+      itemBuilder: (context, i) {
+        final image = images[i];
+        return GestureDetector(
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (_) => Dialog(
+              insetPadding: const EdgeInsets.all(12),
+              child: InteractiveViewer(child: Image.network(image.url)),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  image.url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    color: AppColors.surfaceTint,
+                    child: const Icon(Icons.broken_image_outlined,
+                        color: AppColors.textSecondary),
+                  ),
+                ),
+                if (image.caption case final caption? when caption.isNotEmpty)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 16, 10, 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.6),
+                          ],
+                        ),
+                      ),
+                      child: Text(
+                        caption,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _placeholder(BuildContext context) {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

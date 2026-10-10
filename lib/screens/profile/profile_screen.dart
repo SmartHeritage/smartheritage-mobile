@@ -4,6 +4,7 @@ import '../../app_info.dart';
 import '../../state/auth_state.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/beacon_scan_toggle.dart';
 import '../auth/register_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../help/help_screen.dart';
@@ -276,10 +277,10 @@ class ProfileScreen extends StatelessWidget {
           trailingText: scanning ? 'Đang quét' : 'Đang tắt',
           trailing: Switch(
             value: scanning,
-            onChanged: (_) => BeaconScanController.instance.toggle(),
+            onChanged: (_) => toggleBeaconScan(context),
             activeThumbColor: AppColors.primary,
           ),
-          onTap: BeaconScanController.instance.toggle,
+          onTap: () => toggleBeaconScan(context),
         );
       },
     );

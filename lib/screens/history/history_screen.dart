@@ -82,7 +82,9 @@ class HistoryScreen extends StatelessWidget {
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Xoá lịch sử'),
-        content: const Text('Xoá toàn bộ lịch sử tham quan trên thiết bị này?'),
+        content: Text(VisitHistoryController.instance.isAccountHistory
+            ? 'Xoá toàn bộ lịch sử tham quan của tài khoản này?'
+            : 'Xoá toàn bộ lịch sử tham quan trên thiết bị này?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),

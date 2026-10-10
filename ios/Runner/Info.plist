@@ -7,7 +7,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Ứng dụng cần vị trí của bạn để hiển thị bạn đang đứng ở đâu trên bản đồ khu di tích và tính khoảng cách tới các hiện vật.</string>
+	<string>Ứng dụng cần vị trí của bạn để nhận tín hiệu iBeacon cạnh hiện vật (tự mở giới thiệu và thuyết minh), hiển thị bạn trên bản đồ khu di tích và tính khoảng cách tới các hiện vật.</string>
+	<!-- dchs_flutter_beacon đọc trạng thái Bluetooth qua CoreBluetooth; thiếu
+	     khoá này thì iOS dừng app ngay khi bật quét beacon. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Ứng dụng dùng Bluetooth để nhận tín hiệu iBeacon đặt cạnh hiện vật, tự giới thiệu hiện vật khi bạn đến gần.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Smart Heritage</string>
 	<key>CFBundleExecutable</key>
@@ -73,6 +77,10 @@
 	     Backend dev phục vụ /uploads qua HTTP thuần nên không mở khoá này thì
 	     file thuyết minh không tải được. NSAllowsLocalNetworking chỉ nới cho
 	     localhost và mạng nội bộ; host công khai vẫn bắt buộc HTTPS. -->
+	<!-- Khoá Google Maps SDK: GOOGLE_MAPS_API_KEY trong
+	     ios/Flutter/Secrets.xcconfig (gitignore). AppDelegate đọc key này. -->
+	<key>GMSApiKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

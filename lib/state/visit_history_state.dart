@@ -3,11 +3,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/artifact_repository.dart';
 import '../data/mock_data.dart';
+import '../services/api_client.dart';
+import 'auth_state.dart';
 
-/// Lịch sử tham quan lưu **cục bộ trên máy** (không cần đăng nhập).
+/// Lịch sử tham quan.
 ///
 /// Chỉ ghi khi **iBeacon phát hiện** hiện vật — không ghi khi khách tự bấm vào
-/// hiện vật trong app. Dữ liệu tồn tại qua các lần mở app nhờ [SharedPreferences].
+/// hiện vật trong app.
+///
+/// Hai nguồn:
+/// - **Khách**: lưu cục bộ trên máy ([SharedPreferences]).
+/// - **Đã đăng nhập**: đọc `GET /visits` của backend. Lượt ghé được backend tự
+///   ghi qua `POST /scans` (xem `BeaconScanController`), nên ở đây chỉ chèn
+///   trước một dòng cho giao diện phản hồi ngay. Xoá thì gọi `DELETE /visits`.
 class VisitHistoryController extends ChangeNotifier {
   VisitHistoryController._();
 
@@ -16,27 +24,52 @@ class VisitHistoryController extends ChangeNotifier {
   static const _key = 'visit_history_v1';
   static const _maxItems = 50;
 
+  ApiClient _api = ApiClient.instance;
+
+  @visibleForTesting
+  set apiForTest(ApiClient api) => _api = api;
+
   final List<_Visit> _visits = []; // mới nhất ở đầu
   bool _loaded = false;
+
+  /// Lịch sử trên server; `null` khi chưa đăng nhập (hoặc chưa tải được).
+  List<_ServerVisit>? _server;
+  bool _wasLoggedIn = false;
+
+  /// Đang hiển thị lịch sử của tài khoản (server) thay vì của máy.
+  bool get isAccountHistory => _server != null;
 
   /// Danh sách bản ghi (mới nhất trước) để hiển thị.
   ///
   /// Bỏ qua id không còn tồn tại (dữ liệu lưu từ lần chạy trước, hoặc hiện vật
   /// đã bị gỡ khỏi backend) — thà thiếu một dòng còn hơn hiện nhầm hiện vật.
-  List<VisitRecord> get records => _visits
-      .map((v) {
-        final artifact = ArtifactRepository.instance.tryById(v.id);
-        if (artifact == null) return null;
-        return VisitRecord(
-          artifact: artifact,
-          dateLabel: _dateLabel(v.time),
-          timeLabel: _timeLabel(v.time),
-        );
-      })
-      .whereType<VisitRecord>()
-      .toList();
+  List<VisitRecord> get records {
+    final server = _server;
+    if (server != null) {
+      return [
+        for (final v in server)
+          VisitRecord(
+            artifact: v.artifact,
+            dateLabel: _dateLabel(v.time),
+            timeLabel: _timeLabel(v.time),
+          ),
+      ];
+    }
+    return _visits
+        .map((v) {
+          final artifact = ArtifactRepository.instance.tryById(v.id);
+          if (artifact == null) return null;
+          return VisitRecord(
+            artifact: artifact,
+            dateLabel: _dateLabel(v.time),
+            timeLabel: _timeLabel(v.time),
+          );
+        })
+        .whereType<VisitRecord>()
+        .toList();
+  }
 
-  bool get isEmpty => _visits.isEmpty;
+  bool get isEmpty => _server?.isEmpty ?? _visits.isEmpty;
 
   int get artifactCount => _visits.map((v) => v.id).toSet().length;
 
@@ -56,6 +89,39 @@ class VisitHistoryController extends ChangeNotifier {
       ..clear()
       ..addAll(raw.map(_Visit.tryDecode).whereType<_Visit>());
     notifyListeners();
+
+    AuthController.instance.addListener(_onAuthChanged);
+    _onAuthChanged();
+  }
+
+  /// Đăng nhập thì chuyển sang lịch sử của tài khoản; đăng xuất thì quay về
+  /// lịch sử trên máy — lịch sử của người trước không được ở lại.
+  void _onAuthChanged() {
+    final loggedIn = AuthController.instance.isLoggedIn;
+    if (loggedIn == _wasLoggedIn) return;
+    _wasLoggedIn = loggedIn;
+    if (loggedIn) {
+      syncFromServer();
+    } else {
+      _server = null;
+      notifyListeners();
+    }
+  }
+
+  /// Tải `GET /visits`. Lỗi thì giữ nguyên những gì đang hiển thị.
+  Future<void> syncFromServer() async {
+    try {
+      final data = await _api.get('/visits', query: {'limit': '$_maxItems'});
+      if (data is! List || !AuthController.instance.isLoggedIn) return;
+      _server = data
+          .whereType<Map<String, dynamic>>()
+          .map(_ServerVisit.fromJson)
+          .whereType<_ServerVisit>()
+          .toList();
+      notifyListeners();
+    } on ApiException {
+      // Mất mạng: vẫn hiện lịch sử trên máy, lần đăng nhập sau thử lại.
+    }
   }
 
   /// Ghi nhận một lần beacon phát hiện hiện vật.
@@ -65,15 +131,38 @@ class VisitHistoryController extends ChangeNotifier {
     if (_visits.length > _maxItems) {
       _visits.removeRange(_maxItems, _visits.length);
     }
+    // Backend đã/đang ghi lượt này qua POST /scans; chèn trước để màn hình
+    // không phải chờ một vòng GET /visits. Cùng hiện vật trong ngày là một
+    // dòng — đúng như backend gộp.
+    final server = _server;
+    if (server != null) {
+      final now = DateTime.now();
+      server.removeWhere(
+          (v) => v.artifact.id == artifact.id && _sameDay(v.time, now));
+      server.insert(0, _ServerVisit(artifact, now));
+    }
     notifyListeners();
     await _persist();
   }
 
   Future<void> clear() async {
     _visits.clear();
+    final hadServer = _server != null;
+    if (hadServer) _server = [];
     notifyListeners();
     await _persist();
+    if (hadServer) {
+      try {
+        await _api.delete('/visits');
+      } on ApiException {
+        // Xoá trên server hỏng thì nạp lại để màn hình nói thật.
+        await syncFromServer();
+      }
+    }
   }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
@@ -113,4 +202,30 @@ class _Visit {
       time: DateTime.fromMillisecondsSinceEpoch(millis),
     );
   }
+}
+
+/// Một dòng của `GET /visits`: mỗi hiện vật một dòng mỗi ngày.
+class _ServerVisit {
+  _ServerVisit(this.artifact, this.time);
+
+  static _ServerVisit? fromJson(Map<String, dynamic> json) {
+    final id = json['artifactId'] as String?;
+    if (id == null) return null;
+    // Ưu tiên bản đầy đủ trong danh mục; hiện vật đã gỡ khỏi danh mục vẫn hiện
+    // được tên và ảnh mà backend gửi kèm.
+    final artifact = ArtifactRepository.instance.tryById(id) ??
+        Artifact.fromJson({
+          'id': id,
+          'name': json['artifactName'],
+          'imageUrl': json['imageUrl'],
+        });
+    final time = DateTime.tryParse((json['lastScannedAt'] as String?) ?? '')
+            ?.toLocal() ??
+        DateTime.tryParse((json['visitedOn'] as String?) ?? '') ??
+        DateTime.now();
+    return _ServerVisit(artifact, time);
+  }
+
+  final Artifact artifact;
+  final DateTime time;
 }

@@ -25,6 +25,8 @@ Flutter/app.zip
 Flutter/flutter_assets/
 Flutter/flutter_export_environment.sh
 ServiceDefinitions.json
+# Khoá Google Maps — mỗi máy dev tự tạo, không commit.
+Flutter/Secrets.xcconfig
 Runner/GeneratedPluginRegistrant.*
 
 # Exceptions to above rules.

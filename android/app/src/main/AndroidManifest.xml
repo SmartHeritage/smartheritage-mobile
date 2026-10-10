@@ -1,9 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Tải ô ảnh bản đồ OpenStreetMap từ internet -->
+    <!-- Tải bản đồ Google Maps và dữ liệu từ internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Định vị GPS người dùng trên bản đồ -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Quét iBeacon (dchs_flutter_beacon / AltBeacon). Android 12+ cần
+         BLUETOOTH_SCAN; không đặt neverForLocation vì iBeacon chính là tín
+         hiệu vị trí. Android 11 trở xuống dùng hai quyền cũ. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30"/>
     <application
         android:label="Smart Heritage"
         android:name="${applicationName}"
@@ -30,6 +39,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Khoá Google Maps SDK, lấy từ GOOGLE_MAPS_API_KEY trong
+             android/local.properties (xem build.gradle.kts). -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${googleMapsApiKey}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

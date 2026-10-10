@@ -7,6 +7,7 @@ import '../screens/profile/language_screen.dart';
 import '../state/auth_state.dart';
 import '../state/beacon_scan_state.dart';
 import '../theme/app_theme.dart';
+import 'beacon_scan_toggle.dart';
 
 /// Sidebar của app, mở từ nút menu ở header trang chủ.
 ///
@@ -230,7 +231,7 @@ class _ScanToggle extends StatelessWidget {
         final scanning = BeaconScanController.instance.isScanning;
         return SwitchListTile(
           value: scanning,
-          onChanged: (_) => BeaconScanController.instance.toggle(),
+          onChanged: (_) => toggleBeaconScan(context),
           activeThumbColor: AppColors.primary,
           secondary: Icon(
             scanning ? Icons.bluetooth_searching : Icons.bluetooth_disabled,

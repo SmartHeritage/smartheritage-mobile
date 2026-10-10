@@ -8,6 +8,7 @@ import '../../state/beacon_scan_state.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
+import '../../widgets/beacon_scan_toggle.dart';
 import '../artifact/artifact_detail_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../feedback/feedback_screen.dart';
@@ -201,7 +202,7 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
                 : Icons.bluetooth,
             label: _scan.isScanning ? 'Đang quét' : 'Quét beacon',
             active: _scan.isScanning,
-            onTap: _scan.toggle,
+            onTap: () => toggleBeaconScan(context),
           ),
           _Feature(
             icon: Icons.favorite_border,

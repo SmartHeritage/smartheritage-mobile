@@ -1,18 +1,19 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../data/artifact_repository.dart';
-import '../../data/mock_data.dart';
-import '../../services/location_service.dart';
+import '../../data/attraction.dart';
+import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/artifact_widgets.dart';
-import '../artifact/artifact_detail_screen.dart';
+import 'attraction_map_screen.dart';
+import 'floor_plan_screen.dart';
 
-/// Bản đồ khu di tích thật (tiles CARTO, dữ liệu OpenStreetMap) + định vị GPS.
+/// Tab Bản đồ: danh sách điểm tham quan (Attraction) của khu du lịch đang xem.
+///
+/// Chưa có bản đồ nào ở đây — bấm vào một điểm mới mở bản đồ của điểm đó:
+/// - ngoài trời (`OUTDOOR`) → Google Maps ([AttractionMapScreen]);
+/// - trong nhà có sơ đồ tầng (`INDOOR`) → ảnh sơ đồ ([FloorPlanScreen]).
+///
+/// Đổi khu du lịch ở thanh tiêu đề khi có nhiều khu.
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -21,396 +22,265 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  static const LatLng _siteCenter = LatLng(MockData.siteLat, MockData.siteLng);
+  ArtifactRepository get _repo => ArtifactRepository.instance;
 
-  final MapController _mapController = MapController();
-  Artifact? _selected;
-  Position? _userPos;
-  StreamSubscription<Position>? _posSub;
-  bool _locating = false;
-  String _zone = 'Tất cả';
+  /// Khu du lịch đang xem. Khách chưa chọn thì lấy khu đầu tiên có hiện vật.
+  String? _areaChoice;
 
-  /// Danh sách khu trưng bày lấy từ `GET /zones`, không còn cứng trong code.
-  List<String> get _zones => ArtifactRepository.instance.zones;
-
-  List<Artifact> get _visibleArtifacts {
-    final all = ArtifactRepository.instance.artifacts;
-    return _zone == 'Tất cả'
-        ? all
-        : all.where((a) => a.zone == _zone).toList();
-  }
-
-  @override
-  void dispose() {
-    _posSub?.cancel();
-    super.dispose();
-  }
-
-  /// Xin quyền → lấy vị trí → di chuyển bản đồ tới chỗ người dùng, rồi theo dõi liên tục.
-  Future<void> _locateMe() async {
-    setState(() => _locating = true);
-    final status = await LocationService.ensurePermission();
-    if (!mounted) return;
-
-    if (status != LocationStatus.granted) {
-      setState(() => _locating = false);
-      _showLocationMessage(status);
-      return;
+  String? get _areaId {
+    final areas = _repo.tourismAreas;
+    if (areas.isEmpty) return null;
+    if (areas.any((a) => a.id == _areaChoice)) return _areaChoice;
+    for (final area in areas) {
+      if (_repo.artifactsInArea(area.id).isNotEmpty) return area.id;
     }
-
-    try {
-      final pos = await LocationService.current();
-      if (!mounted) return;
-      setState(() {
-        _userPos = pos;
-        _locating = false;
-      });
-      _mapController.move(LatLng(pos.latitude, pos.longitude), 17);
-      _posSub ??= LocationService.stream().listen((p) {
-        if (mounted) setState(() => _userPos = p);
-      });
-    } catch (_) {
-      if (mounted) setState(() => _locating = false);
-    }
+    return areas.first.id;
   }
 
-  void _showLocationMessage(LocationStatus status) {
-    final msg = switch (status) {
-      LocationStatus.serviceDisabled =>
-        'Vui lòng bật GPS/Vị trí trên thiết bị rồi thử lại.',
-      LocationStatus.deniedForever =>
-        'Quyền vị trí đang bị chặn. Hãy bật lại trong Cài đặt của máy.',
-      _ => 'Ứng dụng cần quyền vị trí để định vị bạn trên bản đồ.',
-    };
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(errorSnackBar(msg));
+  TourismArea? get _area {
+    for (final a in _repo.tourismAreas) {
+      if (a.id == _areaId) return a;
+    }
+    return null;
+  }
+
+  /// Điểm tham quan của khu đang xem. Chưa tải được (đang chạy dữ liệu mẫu)
+  /// thì gom mọi hiện vật vào một mục để bản đồ vẫn xem được.
+  List<Attraction> get _attractions {
+    final list = [
+      for (final a in _repo.attractions)
+        if (_areaId == null || a.tourismAreaId == _areaId) a,
+    ];
+    if (list.isNotEmpty) return list;
+    return const [Attraction(id: '', name: 'Tất cả hiện vật')];
+  }
+
+  int _artifactCount(Attraction attraction) => attraction.id.isEmpty
+      ? _repo.artifacts.length
+      : _repo.artifacts.where((a) => a.attractionId == attraction.id).length;
+
+  /// Điểm tham quan chứa vùng beacon khách đang đứng, nếu có.
+  String? get _hereAttractionId {
+    final zone = BeaconScanController.instance.currentZone;
+    if (zone == null) return null;
+    for (final a in _repo.artifacts) {
+      if (zone.artifactIds.contains(a.id) && a.attractionId != null) {
+        return a.attractionId;
+      }
+    }
+    return null;
+  }
+
+  void _open(Attraction attraction) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => attraction.hasFloorPlan
+          ? FloorPlanScreen(attraction: attraction)
+          : AttractionMapScreen(attraction: attraction),
+    ));
+  }
+
+  void _pickArea() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: Text(
+                'Chọn khu tham quan',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final area in _repo.tourismAreas)
+              ListTile(
+                leading:
+                    const Icon(Icons.place_outlined, color: AppColors.primary),
+                title: Text(area.name),
+                subtitle:
+                    Text('${_repo.artifactsInArea(area.id).length} hiện vật'),
+                trailing: area.id == _areaId
+                    ? const Icon(Icons.check_circle, color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  setState(() => _areaChoice = area.id);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Ghim và bộ lọc khu trưng bày đều đến từ API — vẽ lại khi repository xong.
     return ListenableBuilder(
-      listenable: ArtifactRepository.instance,
+      listenable: Listenable.merge([
+        ArtifactRepository.instance,
+        BeaconScanController.instance,
+      ]),
       builder: (context, _) => _buildScaffold(context),
     );
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final hereId = _hereAttractionId;
+    final attractions = _attractions;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bản đồ tham quan'),
-      ),
-      body: Stack(
-        children: [
-          // 1) Nền bản đồ thật (tiles CARTO)
-          FlutterMap(
-            mapController: _mapController,
-            options: const MapOptions(
-              initialCenter: _siteCenter,
-              initialZoom: 17,
-              minZoom: 3,
-              maxZoom: 19,
+      appBar: AppBar(title: _areaTitle()),
+      body: RefreshIndicator(
+        onRefresh: _repo.refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(4, 0, 4, 12),
+              child: Text(
+                'Chọn một khu vực để xem bản đồ',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ),
-            children: [
-              // Tiles của CARTO (dữ liệu vẫn từ OpenStreetMap). Không dùng
-              // public tile server của OSM: usage policy của họ không cho phép
-              // dùng cho app thật.
-              TileLayer(
-                urlTemplate:
-                    'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.smartheritage.smartheritage',
-                maxNativeZoom: 20,
+            for (final attraction in attractions) ...[
+              _AttractionButton(
+                attraction: attraction,
+                artifactCount: _artifactCount(attraction),
+                isHere: hereId != null && attraction.id == hereId,
+                onTap: () => _open(attraction),
               ),
-
-              // 3) Vòng độ chính xác + chấm vị trí người dùng
-              if (_userPos != null) ...[
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: LatLng(_userPos!.latitude, _userPos!.longitude),
-                      radius: _userPos!.accuracy,
-                      useRadiusInMeter: true,
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      borderColor: AppColors.accent.withValues(alpha: 0.4),
-                      borderStrokeWidth: 1,
-                    ),
-                  ],
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: LatLng(_userPos!.latitude, _userPos!.longitude),
-                      width: 80,
-                      height: 80,
-                      child: const RadarPulse(size: 80),
-                    ),
-                  ],
-                ),
-              ],
-
-              // 2) Ghim các hiện vật
-              MarkerLayer(
-                markers: [
-                  for (final artifact in _visibleArtifacts)
-                    Marker(
-                      point: LatLng(artifact.lat, artifact.lng),
-                      width: 52,
-                      height: 52,
-                      child: _MapPin(
-                        artifact: artifact,
-                        selected: _selected?.id == artifact.id,
-                        onTap: () {
-                          setState(() => _selected = artifact);
-                          _mapController.move(
-                            LatLng(artifact.lat, artifact.lng),
-                            _mapController.camera.zoom,
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-
-              // License của CARTO buộc ghi nguồn cả CARTO và OpenStreetMap.
-              const RichAttributionWidget(
-                alignment: AttributionAlignment.bottomLeft,
-                attributions: [
-                  TextSourceAttribution('CARTO'),
-                  TextSourceAttribution('OpenStreetMap contributors'),
-                ],
-              ),
+              const SizedBox(height: 10),
             ],
-          ),
-
-          // Thanh lọc khu vực (nổi phía trên)
-          Positioned(
-            top: 12,
-            left: 0,
-            right: 0,
-            child: SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  for (final zone in _zones)
-                    _zoneChip(zone, selected: _zone == zone),
-                ],
-              ),
-            ),
-          ),
-
-          // Thẻ thông tin hiện vật đang chọn
-          if (_selected != null)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: _MapArtifactCard(
-                artifact: _selected!,
-                userPos: _userPos,
-                onClose: () => setState(() => _selected = null),
-              ),
-            ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _locating ? null : _locateMe,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        child: _locating
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: Colors.white,
-                ),
-              )
-            : const Icon(Icons.my_location),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _zoneChip(String label, {bool selected = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => setState(() {
-          _zone = label;
-          if (_selected != null && _selected!.zone != label && label != 'Tất cả') {
-            _selected = null;
-          }
-        }),
-        backgroundColor: Colors.white,
-        labelStyle: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : AppColors.textPrimary,
-        ),
+  /// Tiêu đề: tên khu du lịch, bấm để đổi khu khi có nhiều khu.
+  Widget _areaTitle() {
+    final area = _area;
+    if (area == null) return const Text('Bản đồ tham quan');
+    final canSwitch = _repo.tourismAreas.length > 1;
+    return InkWell(
+      onTap: canSwitch ? _pickArea : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: Text(area.name, overflow: TextOverflow.ellipsis)),
+          if (canSwitch) const Icon(Icons.expand_more),
+        ],
       ),
     );
   }
 }
 
-class _MapPin extends StatelessWidget {
-  const _MapPin({
-    required this.artifact,
-    required this.selected,
+/// Một nút khu vực (điểm tham quan) trong danh sách.
+class _AttractionButton extends StatelessWidget {
+  const _AttractionButton({
+    required this.attraction,
+    required this.artifactCount,
+    required this.isHere,
     required this.onTap,
   });
 
-  final Artifact artifact;
-  final bool selected;
+  final Attraction attraction;
+  final int artifactCount;
+
+  /// Khách đang đứng trong vùng beacon của điểm này.
+  final bool isHere;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: selected ? 50 : 44,
-        height: selected ? 50 : 44,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? Colors.white : AppColors.primary,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Icon(
-          artifact.icon,
-          size: 22,
-          color: selected ? Colors.white : AppColors.primary,
-        ),
-      ),
-    );
-  }
-}
-
-class _MapArtifactCard extends StatelessWidget {
-  const _MapArtifactCard({
-    required this.artifact,
-    required this.userPos,
-    required this.onClose,
-  });
-
-  final Artifact artifact;
-  final Position? userPos;
-  final VoidCallback onClose;
-
-  /// Chuỗi khoảng cách từ người dùng tới hiện vật (nếu đã có GPS).
-  String get _distanceLabel {
-    if (userPos == null) return artifact.zone;
-    final meters = LocationService.distanceMeters(
-      userPos!.latitude,
-      userPos!.longitude,
-      artifact.lat,
-      artifact.lng,
-    );
-    final dist = meters < 1000
-        ? '${meters.round()}m'
-        : '${(meters / 1000).toStringAsFixed(1)}km';
-    return '${artifact.zone} · cách bạn ~$dist';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    final indoor = attraction.hasFloorPlan;
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isHere ? AppColors.accent : AppColors.divider,
+              width: isHere ? 2 : 1,
+            ),
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+          child: Row(
             children: [
-              ArtifactThumb(artifact: artifact, size: 56, radius: 14),
-              const SizedBox(width: 12),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceTint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  indoor ? Icons.apartment_outlined : Icons.map_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      artifact.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      attraction.name,
                       style: const TextStyle(
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _distanceLabel,
+                      artifactCount == 0
+                          ? 'Chưa có hiện vật'
+                          : '$artifactCount hiện vật · '
+                              '${indoor ? 'Sơ đồ tầng' : 'Bản đồ'}',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 13,
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    if (isHere) ...[
+                      const SizedBox(height: 6),
+                      const Row(
+                        children: [
+                          Icon(Icons.bluetooth_searching,
+                              size: 14, color: AppColors.accent),
+                          SizedBox(width: 4),
+                          Text(
+                            'Bạn đang ở đây',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: onClose,
-                icon: const Icon(Icons.close,
-                    size: 20, color: AppColors.textSecondary),
-              ),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
-                  ),
-                  icon: const Icon(Icons.directions_walk, size: 19),
-                  label: const Text('Chỉ đường',
-                      style: TextStyle(fontSize: 14)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ArtifactDetailScreen(artifact: artifact),
-                  )),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(44),
-                  ),
-                  icon: const Icon(Icons.info_outline, size: 19),
-                  label:
-                      const Text('Chi tiết', style: TextStyle(fontSize: 14)),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

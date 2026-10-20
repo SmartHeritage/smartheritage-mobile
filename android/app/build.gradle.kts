@@ -1,21 +1,8 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
-
-// Khoá Google Maps không được commit: đọc từ android/local.properties (đã
-// gitignore) hoặc biến môi trường khi build trên CI.
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) file.inputStream().use { load(it) }
-}
-val googleMapsApiKey: String =
-    localProperties.getProperty("GOOGLE_MAPS_API_KEY")
-        ?: System.getenv("GOOGLE_MAPS_API_KEY")
-        ?: ""
 
 android {
     namespace = "com.smartheritage.smartheritage"
@@ -36,7 +23,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
     buildTypes {

@@ -28,11 +28,30 @@ class CrowdInfo {
   }
 }
 
-/// Đọc `GET /crowd/beacons` — public, chỉ đọc.
+/// Mức đông người của cả một điểm tham quan (`GET /attractions/:id/crowd`):
+/// số máy **khác nhau** đang ở trong vùng của bất kỳ beacon nào thuộc điểm đó —
+/// không phải tổng số theo từng beacon (một máy đi qua hai beacon chỉ tính một).
+class AttractionCrowd {
+  const AttractionCrowd({required this.activeDevices, required this.beaconCount});
+
+  final int activeDevices;
+
+  /// Điểm không có beacon thì không đo được — giao diện không nên hiện "vắng".
+  final int beaconCount;
+
+  bool get isMeasurable => beaconCount > 0;
+
+  String get label => activeDevices == 0
+      ? 'Đang vắng khách'
+      : '~$activeDevices khách đang ở khu này';
+}
+
+/// Đọc `GET /crowd/beacons` và `GET /attractions/:id/crowd` — public, chỉ đọc.
 class CrowdRepository extends ChangeNotifier {
   CrowdRepository({ApiClient? api}) : _api = api ?? ApiClient.instance;
 
-  static final CrowdRepository instance = CrowdRepository();
+  /// Gán được trong test.
+  static CrowdRepository instance = CrowdRepository();
 
   final ApiClient _api;
 
@@ -43,6 +62,38 @@ class CrowdRepository extends ChangeNotifier {
 
   /// Mức đông người của cả vùng phủ sóng một beacon.
   CrowdInfo? forBeacon(String beaconId) => _byBeacon[beaconId];
+
+  Map<String, AttractionCrowd> _byAttraction = const {};
+
+  /// Mức đông người của một điểm tham quan; `null` khi chưa tải được.
+  AttractionCrowd? forAttraction(String attractionId) =>
+      _byAttraction[attractionId];
+
+  /// Tải mức đông của nhiều điểm tham quan (mỗi điểm một request, song song —
+  /// backend không có route gộp). Điểm nào lỗi thì giữ số cũ của điểm đó.
+  Future<void> refreshAttractions(Iterable<String> attractionIds) async {
+    final ids = attractionIds.where((id) => id.isNotEmpty).toSet();
+    if (ids.isEmpty) return;
+    final results = await Future.wait(ids.map((id) async {
+      try {
+        final data = await _api.get('/attractions/$id/crowd');
+        if (data is! Map<String, dynamic>) return null;
+        return MapEntry(
+          id,
+          AttractionCrowd(
+            activeDevices: (data['activeDeviceCount'] as num?)?.toInt() ?? 0,
+            beaconCount: (data['beaconCount'] as num?)?.toInt() ?? 0,
+          ),
+        );
+      } on ApiException {
+        return null;
+      }
+    }));
+    final fresh = results.whereType<MapEntry<String, AttractionCrowd>>();
+    if (fresh.isEmpty) return;
+    _byAttraction = {..._byAttraction, ...Map.fromEntries(fresh)};
+    notifyListeners();
+  }
 
   /// Lỗi thì giữ số cũ — mức đông người là thông tin phụ, không đáng báo lỗi.
   Future<void> refresh({String? attractionId}) async {

@@ -106,6 +106,22 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('hiện vật chưa có bản ngôn ngữ đang chọn thì báo rõ, không có nút nghe',
+      (tester) async {
+    final artifact = Artifact.fromJson({
+      'id': 'uuid-ja',
+      'name': 'Trống đồng Đông Sơn',
+      'description': '',
+      'language': {'requested': 'ja', 'resolved': null},
+    });
+    await tester.pumpWidget(_harness(artifact));
+    await tester.pump();
+
+    expect(find.text('Hiện vật này chưa có bản 日本語'), findsOneWidget);
+    expect(find.text('Đổi ngôn ngữ'), findsOneWidget);
+    expect(find.text('Nghe thuyết minh âm thanh'), findsNothing);
+  });
+
   testWidgets('tab Giới thiệu không còn nút đánh giá', (tester) async {
     await tester.pumpWidget(_harness(MockData.artifacts.first));
     await tester.pump();

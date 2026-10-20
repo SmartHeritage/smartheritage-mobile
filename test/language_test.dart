@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smartheritage/data/artifact_repository.dart';
 import 'package:smartheritage/data/favorite_repository.dart';
+import 'package:smartheritage/data/news_repository.dart';
 import 'package:smartheritage/services/api_client.dart';
 import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/state/language_state.dart';
@@ -49,6 +50,7 @@ void main() {
     auth = AuthController(api: api);
     AuthController.instance = auth;
     language.repositoryForTest = ArtifactRepository(api: api);
+    language.newsForTest = NewsRepository(api: api);
     await language.load();
   });
 
@@ -59,6 +61,8 @@ void main() {
     expect(ok, isTrue);
     expect(language.code, 'en');
     expect(calls, contains('GET /api/v1/artifacts?language=en'));
+    // Tin tức cũng tải lại theo thứ tiếng mới.
+    expect(calls, contains('GET /api/v1/blogs?lang=en&limit=10'));
     expect(patches, isEmpty);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('visitor.language'), 'en');

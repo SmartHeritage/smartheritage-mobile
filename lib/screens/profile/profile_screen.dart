@@ -24,7 +24,8 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, _) {
           final isLoggedIn = AuthController.instance.isLoggedIn;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+            padding: EdgeInsets.fromLTRB(
+                20, 12, 20, 32 + MediaQuery.paddingOf(context).bottom),
             children: [
               _buildProfileCard(context),
               const SizedBox(height: 24),

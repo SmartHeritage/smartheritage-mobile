@@ -77,7 +77,8 @@ class FavoritesScreen extends StatelessWidget {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            padding: EdgeInsets.fromLTRB(
+                20, 12, 20, 24 + MediaQuery.paddingOf(context).bottom),
             itemCount: favorites.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, i) =>

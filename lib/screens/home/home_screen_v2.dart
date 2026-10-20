@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
+import '../../data/news_repository.dart';
 import '../../state/audio_player_state.dart';
 import '../../state/auth_state.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
-import '../../widgets/beacon_scan_toggle.dart';
 import '../artifact/artifact_detail_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../feedback/feedback_screen.dart';
@@ -18,14 +18,16 @@ import '../map/map_screen.dart';
 import '../news/news_detail_screen.dart';
 import '../profile/language_screen.dart';
 import '../profile/profile_screen.dart';
+import '../scan/beacon_scan_screen.dart';
 import 'home_screen.dart' show BeaconDetectedSheet;
 
 /// Bản dựng thử trang chủ theo ngôn ngữ thị giác của app HCMC Metro: hero
 /// card bo góc lớn, lưới tính năng icon tròn, carousel ngang, nền phớt màu.
 ///
-/// Ở chế độ này bottom nav bị bỏ — lưới 8 ô chính là điều hướng duy nhất,
-/// đúng như Metro. Bản đồ / Yêu thích / Tài khoản không còn là tab mà được
-/// push thành route, nên ba màn hình đó tự mọc nút back từ AppBar sẵn có.
+/// Ban đầu bản này bỏ bottom nav giống Metro (lưới 8 ô là điều hướng duy
+/// nhất); từ 2026-10-19 V2 cũng có thanh điều hướng kính mờ như V1 theo yêu
+/// cầu, nên ba ô Bản đồ / Yêu thích / Tài khoản chuyển tab ([onOpenTab]) thay
+/// vì push thành route.
 ///
 /// Khác Metro một điểm: lưới chỉ có MỘT trang. Metro chia 2 trang và nhét
 /// Bản đồ, Tour ảo, Sự kiện xuống trang 2 — gần như không ai vuốt tới. Tám ô
@@ -36,7 +38,12 @@ import 'home_screen.dart' show BeaconDetectedSheet;
 ///
 /// Bật bằng: flutter run --dart-define=HOME_V2=true
 class HomeScreenV2 extends StatefulWidget {
-  const HomeScreenV2({super.key});
+  const HomeScreenV2({super.key, this.onOpenTab});
+
+  /// Chuyển sang tab của MainShell (1 Bản đồ, 2 Yêu thích, 3 Cá nhân). Ba ô
+  /// tương ứng trong lưới dùng nó để khỏi mở thêm một bản sao của tab thành
+  /// route; `null` (test, nhúng riêng) thì vẫn push như trước.
+  final ValueChanged<int>? onOpenTab;
 
   @override
   State<HomeScreenV2> createState() => _HomeScreenV2State();
@@ -86,7 +93,10 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ArtifactRepository.instance,
+      listenable: Listenable.merge([
+        ArtifactRepository.instance,
+        NewsRepository.instance,
+      ]),
       builder: (context, _) => _buildBody(context),
     );
   }
@@ -108,12 +118,20 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
           stops: [0, 1],
         ),
       ),
+      // Không chừa lề dưới ở SafeArea: danh sách chạy xuống sau thanh điều
+      // hướng kính mờ, lề cuối đã cộng chiều cao thanh.
       child: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: ArtifactRepository.instance.refresh,
+          onRefresh: () => Future.wait([
+            ArtifactRepository.instance.refresh(),
+            NewsRepository.instance.refresh(),
+          ]),
           child: ListView(
-            padding: const EdgeInsets.only(bottom: 28),
+            padding: EdgeInsets.only(
+              bottom: 28 + MediaQuery.paddingOf(context).bottom,
+            ),
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               _pad(_buildTopBar(context)),
@@ -178,14 +196,17 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
     );
   }
 
-  /// Lưới 8 tính năng — thay hoàn toàn bottom nav, đây là điều hướng chính
-  /// của màn hình.
+  /// Lưới 8 tính năng, điều hướng chính của màn hình.
   ///
-  /// Xếp 2 hàng 4 ô trên một trang duy nhất. Ba ô đầu (Bản đồ, Yêu thích,
-  /// Tài khoản) chính là ba tab cũ, giờ push thành route.
+  /// Xếp 2 hàng 4 ô trên một trang duy nhất. Bản đồ, Yêu thích, Tài khoản
+  /// trùng với tab ở thanh dưới nên chuyển tab, không mở thêm một bản.
   Widget _buildFeatureGrid(BuildContext context) {
     void push(Widget screen) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    void openTab(int tab, Widget screen) {
+      final onOpenTab = widget.onOpenTab;
+      onOpenTab == null ? push(screen) : onOpenTab(tab);
+    }
 
     return ListenableBuilder(
       listenable: _scan,
@@ -194,7 +215,7 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
           _Feature(
             icon: Icons.map_outlined,
             label: 'Bản đồ',
-            onTap: () => push(const MapScreen()),
+            onTap: () => openTab(1, const MapScreen()),
           ),
           _Feature(
             icon: _scan.isScanning
@@ -202,12 +223,14 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
                 : Icons.bluetooth,
             label: _scan.isScanning ? 'Đang quét' : 'Quét beacon',
             active: _scan.isScanning,
-            onTap: () => toggleBeaconScan(context),
+            // Sang trang quét riêng (nút Bluetooth lớn), giống lựa chọn
+            // "Quét beacon" ở nút quét giữa thanh điều hướng.
+            onTap: () => push(const BeaconScanScreen()),
           ),
           _Feature(
             icon: Icons.favorite_border,
             label: 'Yêu thích',
-            onTap: () => push(const FavoritesScreen()),
+            onTap: () => openTab(2, const FavoritesScreen()),
           ),
           _Feature(
             icon: Icons.headphones_outlined,
@@ -280,6 +303,11 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
       final loggedIn = await AuthController.ensureLoggedIn(context);
       if (!loggedIn || !mounted) return;
     }
+    final onOpenTab = widget.onOpenTab;
+    if (onOpenTab != null) {
+      onOpenTab(3);
+      return;
+    }
     navigator.push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
   }
 
@@ -329,9 +357,10 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
   }
 
   /// Carousel tin tức — cùng dạng với "Nổi bật" nhưng thẻ thấp hơn vì không
-  /// có hàng sao/thời kỳ, chỉ ảnh bìa, tiêu đề và ngày.
+  /// có hàng sao/thời kỳ, chỉ ảnh bìa, tiêu đề và ngày. Bài viết đã xuất bản
+  /// ở admin; chưa có bài nào thì ẩn cả mục.
   Widget _buildNewsCarousel() {
-    const news = MockData.news;
+    final news = NewsRepository.instance.items;
     if (news.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,7 +459,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 168,
+      height: 210,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -439,10 +468,12 @@ class _HeroCard extends StatelessWidget {
         color: AppColors.primaryDark,
         image: const DecorationImage(
           image: AssetImage('assets/images/hero_museum.jpg'),
-          // Ảnh 2.38:1 đúng bằng tỉ lệ thẻ trên máy rộng nhất. Máy hẹp hơn
-          // thì cover cắt bớt hai bên — chủ thể nằm lệch phải nên phần mất
-          // là khoảng nền trống bên trái.
+          // Ảnh 2.38:1 mà thẻ cao 210 chỉ khoảng 1.7:1 (máy 390pt), nên
+          // cover cắt mất gần 30% bề ngang. Neo phải: chủ thể (đền + trống
+          // đồng) nằm sát mép phải, phần bị cắt là mặt hồ trống bên trái —
+          // vốn chỉ là nền cho tiêu đề.
           fit: BoxFit.cover,
+          alignment: Alignment.centerRight,
         ),
       ),
       child: Stack(
@@ -762,12 +793,7 @@ class _NewsSlide extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(16),
               ),
-              child: Image.asset(
-                item.imageAsset,
-                height: 92,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
+              child: NewsCover(item: item, height: 92),
             ),
             Expanded(
               child: Padding(
@@ -790,23 +816,24 @@ class _NewsSlide extends StatelessWidget {
                     // Đẩy ngày xuống đáy thẻ để các thẻ thẳng hàng nhau dù tiêu
                     // đề dài ngắn khác nhau.
                     const Spacer(),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.schedule,
-                          size: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.dateLabel,
-                          style: const TextStyle(
-                            fontSize: 11.5,
+                    if (item.dateLabel.isNotEmpty)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule,
+                            size: 12,
                             color: AppColors.textSecondary,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.dateLabel,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),

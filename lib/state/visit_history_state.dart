@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -79,6 +81,48 @@ class VisitHistoryController extends ChangeNotifier {
       .toSet()
       .length;
 
+  /// Số liệu `GET /visits/stats` của tài khoản; `null` khi chưa tải được.
+  VisitStats? _serverStats;
+
+  /// Ba con số đầu màn Lịch sử.
+  ///
+  /// Đăng nhập: lấy từ backend — tính trên toàn bộ lịch sử, không bị giới hạn
+  /// [_maxItems] dòng như danh sách. Chưa tải được thì tạm tính từ các dòng
+  /// đang có. Khách: tính từ lịch sử trên máy; máy chỉ giữ lần ghé gần nhất của
+  /// mỗi hiện vật nên "ngày tham quan" có thể thấp hơn thực tế.
+  VisitStats get stats {
+    if (_server != null && _serverStats != null) return _serverStats!;
+    final rows = records;
+    String dayKey(DateTime t) => '${t.year}-${t.month}-${t.day}';
+    final times = _server?.map((v) => v.time) ?? _visits.map((v) => v.time);
+    return VisitStats(
+      artifactsViewed: rows.map((r) => r.artifact.id).toSet().length,
+      visitDays: times.map(dayKey).toSet().length,
+      attractionsVisited: rows
+          .map((r) => r.artifact.attractionId)
+          .whereType<String>()
+          .toSet()
+          .length,
+    );
+  }
+
+  /// Tải lại `GET /visits/stats`. Gọi khi mở màn Lịch sử: lượt ghé do
+  /// `POST /scans` ghi ở nơi khác nên số trên server có thể đã đổi.
+  /// Lỗi thì giữ số cũ — thống kê là thông tin phụ.
+  Future<void> refreshStats() async {
+    if (!AuthController.instance.isLoggedIn) return;
+    try {
+      final data = await _api.get('/visits/stats');
+      if (data is! Map<String, dynamic> || !AuthController.instance.isLoggedIn) {
+        return;
+      }
+      _serverStats = VisitStats.fromJson(data);
+      notifyListeners();
+    } on ApiException {
+      // giữ nguyên
+    }
+  }
+
   /// Nạp lịch sử đã lưu. Gọi một lần khi khởi động app.
   Future<void> load() async {
     if (_loaded) return;
@@ -104,12 +148,14 @@ class VisitHistoryController extends ChangeNotifier {
       syncFromServer();
     } else {
       _server = null;
+      _serverStats = null;
       notifyListeners();
     }
   }
 
   /// Tải `GET /visits`. Lỗi thì giữ nguyên những gì đang hiển thị.
   Future<void> syncFromServer() async {
+    unawaited(refreshStats());
     try {
       final data = await _api.get('/visits', query: {'limit': '$_maxItems'});
       if (data is! List || !AuthController.instance.isLoggedIn) return;
@@ -148,7 +194,10 @@ class VisitHistoryController extends ChangeNotifier {
   Future<void> clear() async {
     _visits.clear();
     final hadServer = _server != null;
-    if (hadServer) _server = [];
+    if (hadServer) {
+      _server = [];
+      _serverStats = const VisitStats();
+    }
     notifyListeners();
     await _persist();
     if (hadServer) {
@@ -182,6 +231,28 @@ class VisitHistoryController extends ChangeNotifier {
   String _timeLabel(DateTime t) => '${_two(t.hour)}:${_two(t.minute)}';
 
   String _two(int n) => n.toString().padLeft(2, '0');
+}
+
+/// Ba ô thống kê lịch sử — đúng shape `GET /visits/stats`.
+class VisitStats {
+  const VisitStats({
+    this.artifactsViewed = 0,
+    this.visitDays = 0,
+    this.attractionsVisited = 0,
+  });
+
+  factory VisitStats.fromJson(Map<String, dynamic> json) {
+    int read(String key) => (json[key] as num?)?.toInt() ?? 0;
+    return VisitStats(
+      artifactsViewed: read('artifactsViewed'),
+      visitDays: read('visitDays'),
+      attractionsVisited: read('attractionsVisited'),
+    );
+  }
+
+  final int artifactsViewed;
+  final int visitDays;
+  final int attractionsVisited;
 }
 
 class _Visit {

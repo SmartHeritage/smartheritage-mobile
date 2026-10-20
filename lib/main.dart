@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'data/artifact_repository.dart';
+import 'data/news_repository.dart';
 import 'screens/splash_screen.dart';
+import 'services/mapbox_config.dart';
 import 'state/auth_state.dart';
 import 'state/language_state.dart';
 import 'state/visit_history_state.dart';
@@ -9,6 +11,7 @@ import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  MapboxConfig.init();
   VisitHistoryController.instance.load();
   _bootstrap();
   runApp(const SmartHeritageApp());
@@ -22,7 +25,12 @@ void main() {
 Future<void> _bootstrap() async {
   await AuthController.instance.restoreSession();
   await LanguageController.instance.load();
-  await ArtifactRepository.instance.ensureLoaded();
+  // Tin tức độc lập với hiện vật — tải song song, hỏng bên nào không kéo
+  // bên kia.
+  await Future.wait([
+    ArtifactRepository.instance.ensureLoaded(),
+    NewsRepository.instance.ensureLoaded(),
+  ]);
 }
 
 class SmartHeritageApp extends StatelessWidget {

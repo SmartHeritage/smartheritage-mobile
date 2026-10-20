@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Token Mapbox của máy này (--dart-define-from-file=mapbox.local.json)
+/mapbox.local.json
+
+# Báo cáo build Gradle (android/build/reports) — sinh ra khi build, không theo dõi
+/android/build/

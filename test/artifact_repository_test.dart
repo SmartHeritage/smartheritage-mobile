@@ -81,6 +81,23 @@ void main() {
       expect(artifact.lng, decor.lng);
     });
 
+    test('ngôn ngữ khách chọn mà hiện vật chưa có thì ghi lại mã đó', () {
+      Map<String, dynamic> withLanguage(String? resolved) => {
+            ..._apiArtifact(),
+            'language': {
+              'requested': 'ja',
+              'source': 'request',
+              'resolved': resolved,
+              'available': ['en', 'vi'],
+            },
+          };
+
+      expect(Artifact.fromJson(withLanguage(null)).unavailableLanguage, 'ja');
+      expect(Artifact.fromJson(withLanguage('ja')).unavailableLanguage, isNull);
+      // Không gửi ngôn ngữ (không có khối language) thì không coi là thiếu.
+      expect(Artifact.fromJson(_apiArtifact()).unavailableLanguage, isNull);
+    });
+
     test('hiện vật lạ vẫn dựng được, dùng icon và toạ độ mặc định', () {
       final artifact = Artifact.fromJson(
         _apiArtifact(id: 'uuid-x', name: 'Hiện vật chưa từng có'),

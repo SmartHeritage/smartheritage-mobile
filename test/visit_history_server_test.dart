@@ -44,6 +44,13 @@ void main() {
       httpClient: MockClient((req) async {
         calls.add('${req.method} ${req.url.path}');
         if (req.method == 'DELETE') return http.Response('', 204);
+        if (req.url.path.endsWith('/visits/stats')) {
+          return _json({
+            'artifactsViewed': 12,
+            'visitDays': 4,
+            'attractionsVisited': 3,
+          });
+        }
         return _json([
           _row('uuid-1', 'Trống đồng Đông Sơn', '2026-10-09'),
           _row('uuid-gone', 'Hiện vật đã gỡ', '2026-10-08'),
@@ -65,9 +72,12 @@ void main() {
     ArtifactRepository.instance.resetForTest();
   });
 
-  test('khách thì dùng lịch sử trên máy, không gọi /visits', () {
+  test('khách thì dùng lịch sử trên máy, không gọi /visits', () async {
     expect(history.isAccountHistory, isFalse);
+    // Khách thì không hỏi thống kê tài khoản.
+    await history.refreshStats();
     expect(calls, isEmpty);
+    expect(history.stats.artifactsViewed, 0);
   });
 
   test('đăng nhập thì chuyển sang GET /visits', () async {
@@ -81,6 +91,14 @@ void main() {
         ['Trống đồng Đông Sơn', 'Hiện vật đã gỡ']);
     // Có trong danh mục thì lấy bản đầy đủ; đã gỡ thì vẫn hiện tên backend gửi.
     expect(records.first.artifact.shortIntro, 'Bản đầy đủ trong danh mục.');
+  });
+
+  test('đăng nhập thì thống kê lấy từ GET /visits/stats', () {
+    // Số của server tính trên toàn bộ lịch sử, không phải 2 dòng đang hiện.
+    expect(calls, contains('GET /api/v1/visits/stats'));
+    expect(history.stats.artifactsViewed, 12);
+    expect(history.stats.visitDays, 4);
+    expect(history.stats.attractionsVisited, 3);
   });
 
   test('beacon phát hiện thì dòng mới lên đầu ngay, không chờ tải lại',
@@ -97,6 +115,7 @@ void main() {
 
     expect(calls, contains('DELETE /api/v1/visits'));
     expect(history.isEmpty, isTrue);
+    expect(history.stats.artifactsViewed, 0);
   });
 
   test('đăng xuất thì quay về lịch sử trên máy', () async {

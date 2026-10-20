@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/artifact_repository.dart';
+import '../data/news_repository.dart';
 import '../services/api_client.dart';
 import 'auth_state.dart';
 
@@ -39,6 +40,12 @@ class LanguageController extends ChangeNotifier {
   @visibleForTesting
   set repositoryForTest(ArtifactRepository repo) => _repo = repo;
 
+  /// Tin tức cũng theo ngôn ngữ (`?lang=` bắt buộc ở `/blogs`).
+  NewsRepository _news = NewsRepository.instance;
+
+  @visibleForTesting
+  set newsForTest(NewsRepository repo) => _news = repo;
+
   String get code => _code;
 
   /// Những ngôn ngữ hiện chọn được: theo backend nếu đã biết, không thì hai
@@ -56,6 +63,7 @@ class LanguageController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _code = prefs.getString(_key) ?? defaultCode;
     _repo.language = _code;
+    _news.language = _code;
     _auth?.removeListener(_onAuthChanged);
     _auth = AuthController.instance..addListener(_onAuthChanged);
     _wasLoggedIn = false;
@@ -94,6 +102,7 @@ class LanguageController extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key, code);
     _repo.language = code;
-    await _repo.refresh();
+    _news.language = code;
+    await Future.wait([_repo.refresh(), _news.refresh()]);
   }
 }

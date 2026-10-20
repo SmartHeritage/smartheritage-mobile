@@ -1,27 +1,23 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/attraction.dart';
 import '../../data/crowd_repository.dart';
 import '../../data/mock_data.dart';
 import '../../services/location_service.dart';
-import '../../services/maps_config.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
+import '../../widgets/heritage_map.dart';
 import '../artifact/artifact_detail_screen.dart';
 
-/// Bản đồ Google Maps của một điểm tham quan ngoài trời: hiện vật, beacon và
+/// Bản đồ Mapbox của một điểm tham quan ngoài trời: hiện vật, beacon và
 /// vùng beacon khách đang đứng.
 ///
-/// Cần khoá Google Maps SDK: `GOOGLE_MAPS_API_KEY` trong
-/// `android/local.properties` và `ios/Flutter/Secrets.xcconfig` (cả hai đều
-/// nằm ngoài git).
+/// Cần token Mapbox lúc build (xem [HeritageMap] / `services/mapbox_config.dart`).
 ///
 /// [attraction] có `id` rỗng nghĩa là "mọi hiện vật" — dùng khi chưa tải được
 /// danh sách điểm tham quan (đang chạy dữ liệu mẫu).
@@ -51,25 +47,27 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
   static const _crowdRefresh = Duration(seconds: 30);
   Timer? _crowdTimer;
 
-  GoogleMapController? _map;
+  final _map = HeritageMapController();
   Artifact? _selected;
+
+  /// Bản đồ đã rời khung ôm hết điểm (khách tự kéo/zoom, hoặc vừa zoom tới
+  /// vị trí của tôi / vùng beacon) — hiện nút "Xem tất cả".
+  bool _movedAway = false;
   Position? _userPos;
   StreamSubscription<Position>? _posSub;
   bool _locating = false;
 
-  /// Đã có quyền vị trí — bật chấm xanh "vị trí của tôi" của Google Maps.
+  /// Đã có quyền vị trí — bật chấm "vị trí của tôi" của Mapbox.
   bool _locationGranted = false;
-
-  /// `flutter test` không có Google Maps SDK native — thay nền bản đồ bằng một
-  /// danh sách ghim bấm được ([_TestMapStub]), phần còn lại vẫn chạy thật.
-  static final bool _inWidgetTest = Platform.environment.containsKey(
-    'FLUTTER_TEST',
-  );
 
   static const double _defaultZoom = 18;
 
-  /// `null` khi đang hỏi phía native; `false` = chưa cấu hình khoá Google Maps.
-  bool? _mapsConfigured;
+  /// Màu ghim: hiện vật đỏ đô (đang chọn: hồng; trong vùng beacon đang đứng:
+  /// vàng kim), beacon xanh dương.
+  static const _artifactColor = AppColors.primary;
+  static const _selectedColor = Color(0xFFE0457B);
+  static const _hereColor = AppColors.accent;
+  static const _beaconColor = Color(0xFF1E88E5);
 
   @override
   void initState() {
@@ -77,18 +75,12 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
     _refreshCrowd();
     _crowdTimer = Timer.periodic(_crowdRefresh, (_) => _refreshCrowd());
     _loadBeacons();
-    if (!_inWidgetTest) {
-      MapsConfig.isConfigured().then((ok) {
-        if (mounted) setState(() => _mapsConfigured = ok);
-      });
-    }
   }
 
   @override
   void dispose() {
     _posSub?.cancel();
     _crowdTimer?.cancel();
-    _map?.dispose();
     super.dispose();
   }
 
@@ -120,21 +112,10 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
   ];
 
   /// Mọi điểm có toạ độ của điểm tham quan — để đặt khung nhìn.
-  List<LatLng> get _points => [
-    for (final a in _artifacts) LatLng(a.lat, a.lng),
-    for (final b in _pinnedBeacons) LatLng(b.lat!, b.lng!),
+  List<(double, double)> get _points => [
+    for (final a in _artifacts) (a.lat, a.lng),
+    for (final b in _pinnedBeacons) (b.lat!, b.lng!),
   ];
-
-  LatLng get _center {
-    final points = _points;
-    if (points.isEmpty) {
-      return const LatLng(MockData.siteLat, MockData.siteLng);
-    }
-    return LatLng(
-      points.map((p) => p.latitude).reduce((x, y) => x + y) / points.length,
-      points.map((p) => p.longitude).reduce((x, y) => x + y) / points.length,
-    );
-  }
 
   /// Vùng beacon khách đang đứng, chỉ khi beacon đó thuộc điểm này.
   _Here? get _here {
@@ -161,53 +142,38 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
 
   // ---- camera --------------------------------------------------------------
 
-  void _moveTo(LatLng target, {double? zoom}) {
-    _map?.animateCamera(
-      zoom == null
-          ? CameraUpdate.newLatLng(target)
-          : CameraUpdate.newLatLngZoom(target, zoom),
-    );
+  void _moveTo(double lat, double lng, {double? zoom}) =>
+      _map.moveTo(lat, lng, zoom: zoom);
+
+  void _fitAll() => _map.fit(_points);
+
+  void _onUserMove() {
+    if (!_movedAway) setState(() => _movedAway = true);
   }
 
-  /// Đưa khung nhìn bao trọn [points]; một điểm thì zoom vào điểm đó.
-  void _fit(List<LatLng> points) {
-    if (points.isEmpty) return;
-    if (points.length == 1) {
-      _moveTo(points.single, zoom: 19);
-      return;
-    }
-    var south = points.first.latitude, north = south;
-    var west = points.first.longitude, east = west;
-    for (final p in points) {
-      if (p.latitude < south) south = p.latitude;
-      if (p.latitude > north) north = p.latitude;
-      if (p.longitude < west) west = p.longitude;
-      if (p.longitude > east) east = p.longitude;
-    }
-    _map?.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(south, west),
-          northeast: LatLng(north, east),
-        ),
-        72,
-      ),
-    );
+  /// Nút "Xem tất cả": về khung ôm hết hiện vật và beacon.
+  void _showAll() {
+    setState(() {
+      _movedAway = false;
+      _selected = null;
+    });
+    // Đợi khung sau: đóng thẻ làm đổi padding, khung ôm phải tính theo
+    // padding mới.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fitAll());
   }
-
-  void _fitAll() => _fit(_points);
 
   /// Đưa bản đồ về vùng beacon: vị trí beacon nếu có, không thì các hiện vật
   /// nó phục vụ.
   void _goHere(_Here here) {
+    setState(() => _movedAway = true);
     final b = here.beacon;
     if (b != null && b.isPinned) {
-      _moveTo(LatLng(b.lat!, b.lng!), zoom: 19);
+      _moveTo(b.lat!, b.lng!, zoom: 19);
       return;
     }
-    _fit([
+    _map.fit([
       for (final a in _artifacts)
-        if (here.artifactIds.contains(a.id)) LatLng(a.lat, a.lng),
+        if (here.artifactIds.contains(a.id)) (a.lat, a.lng),
     ]);
   }
 
@@ -232,8 +198,9 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
         _userPos = pos;
         _locating = false;
         _locationGranted = true;
+        _movedAway = true;
       });
-      _moveTo(LatLng(pos.latitude, pos.longitude), zoom: _defaultZoom);
+      _moveTo(pos.latitude, pos.longitude, zoom: _defaultZoom);
       _posSub ??= LocationService.stream().listen((p) {
         if (mounted) setState(() => _userPos = p);
       });
@@ -271,7 +238,6 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
 
   Widget _buildScaffold(BuildContext context) {
     final here = _here;
-    final markers = _markers(here);
     final hasPoints = _points.isNotEmpty;
 
     return Scaffold(
@@ -281,56 +247,31 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
       body: Stack(
         children: [
           if (!hasPoints)
-            const _Message(
+            const MapMessage(
               icon: Icons.location_off_outlined,
               title: 'Chưa có vị trí trên bản đồ',
               text:
                   'Điểm tham quan này chưa có hiện vật hay beacon nào được '
                   'đặt toạ độ.',
             )
-          else if (_inWidgetTest)
-            _TestMapStub(markers: markers)
-          else if (_mapsConfigured == null)
-            const ColoredBox(
-              color: AppColors.surfaceTint,
-              child: SizedBox.expand(),
-            )
-          else if (_mapsConfigured == false)
-            const _Message(
-              icon: Icons.map_outlined,
-              title: 'Bản đồ chưa sẵn sàng',
-              text:
-                  'Bản build này chưa có khoá Google Maps. Thêm '
-                  'GOOGLE_MAPS_API_KEY vào android/local.properties và '
-                  'ios/Flutter/Secrets.xcconfig rồi build lại.',
-            )
           else
-            GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _center,
-                zoom: _defaultZoom,
-              ),
-              minMaxZoomPreference: const MinMaxZoomPreference(3, 20),
-              myLocationEnabled: _locationGranted,
-              // Đã có nút định vị riêng (FAB) và thẻ hiện vật.
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              mapToolbarEnabled: false,
+            HeritageMap(
+              controller: _map,
+              initialFit: _points,
+              singlePointZoom: 19,
+              showUserLocation: _locationGranted,
               // Chừa chỗ cho dải phía trên và thẻ hiện vật phía dưới để logo
-              // Google và la bàn không bị che.
+              // Mapbox và la bàn không bị che.
               padding: EdgeInsets.only(
                 top: here == null ? 0 : 56,
                 bottom: _selected == null ? 0 : 150,
               ),
-              onMapCreated: (controller) {
-                _map = controller;
-                _fitAll();
-              },
-              onTap: (_) {
+              onMapTap: () {
                 if (_selected != null) setState(() => _selected = null);
               },
-              circles: _circles(here),
-              markers: markers,
+              onUserMove: _onUserMove,
+              zone: _zone(here),
+              pins: _pins(here),
             ),
 
           // "Bạn đang ở khu vực Beacon …" — bấm để đưa bản đồ về đó.
@@ -396,149 +337,93 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
         ],
       ),
       floatingActionButton: hasPoints
-          ? FloatingActionButton(
-              onPressed: _locating ? null : _locateMe,
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              child: _locating
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.my_location),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (_movedAway) ...[
+                  MapFitAllButton(onPressed: _showAll),
+                  const SizedBox(height: 12),
+                ],
+                FloatingActionButton(
+                  onPressed: _locating ? null : _locateMe,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  child: _locating
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.my_location),
+                ),
+              ],
             )
           : null,
     );
   }
 
   /// Vùng beacon khách đang đứng (khi beacon đã có toạ độ).
-  Set<Circle> _circles(_Here? here) {
+  MapZone? _zone(_Here? here) {
     final b = here?.beacon;
-    if (b == null || !b.isPinned) return const {};
-    return {
-      Circle(
-        circleId: const CircleId('here'),
-        center: LatLng(b.lat!, b.lng!),
-        radius: 15,
-        fillColor: AppColors.accent.withValues(alpha: 0.18),
-        strokeColor: AppColors.accent,
-        strokeWidth: 2,
-      ),
-    };
+    if (b == null || !b.isPinned) return null;
+    return MapZone(
+      lat: b.lat!,
+      lng: b.lng!,
+      radiusMeters: 15,
+      color: AppColors.accent,
+    );
   }
 
-  /// Hiện vật (đỏ; đang chọn: hồng; trong vùng beacon đang đứng: cam) và
-  /// beacon (xanh, bong bóng ghi mức đông người).
-  Set<Marker> _markers(_Here? here) {
-    return {
+  /// Hiện vật và beacon. Bấm hiện vật mở thẻ ở đáy; bấm beacon báo tên và mức
+  /// đông người quanh nó (Mapbox không có bong bóng sẵn như Google Maps).
+  List<MapPin> _pins(_Here? here) {
+    return [
       for (final b in _pinnedBeacons)
-        Marker(
-          markerId: MarkerId('beacon:${b.id}'),
-          position: LatLng(b.lat!, b.lng!),
-          zIndexInt: 1,
-          alpha: here?.beacon?.id == b.id ? 1 : 0.85,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
-          ),
-          infoWindow: InfoWindow(title: b.name, snippet: _beaconSnippet(b)),
+        MapPin(
+          id: 'beacon:${b.id}',
+          lat: b.lat!,
+          lng: b.lng!,
+          title: b.name,
+          color: _beaconColor,
+          sortKey: 1,
+          onTap: () => _showBeacon(b),
         ),
       for (final artifact in _artifacts)
-        Marker(
-          markerId: MarkerId('artifact:${artifact.id}'),
-          position: LatLng(artifact.lat, artifact.lng),
-          zIndexInt: _selected?.id == artifact.id ? 3 : 2,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            _selected?.id == artifact.id
-                ? BitmapDescriptor.hueRose
-                : (here?.artifactIds.contains(artifact.id) ?? false)
-                ? BitmapDescriptor.hueOrange
-                : BitmapDescriptor.hueRed,
-          ),
-          // Tên hiện vật cho trình đọc màn hình; thông tin đầy đủ ở thẻ dưới.
-          infoWindow: InfoWindow(title: artifact.name),
-          // Không mở bong bóng: thông tin hiện ở thẻ phía dưới.
-          consumeTapEvents: true,
+        MapPin(
+          id: 'artifact:${artifact.id}',
+          lat: artifact.lat,
+          lng: artifact.lng,
+          title: artifact.name,
+          color: _selected?.id == artifact.id
+              ? _selectedColor
+              : (here?.artifactIds.contains(artifact.id) ?? false)
+              ? _hereColor
+              : _artifactColor,
+          sortKey: _selected?.id == artifact.id ? 3 : 2,
           onTap: () {
             setState(() => _selected = artifact);
-            _moveTo(LatLng(artifact.lat, artifact.lng));
+            _moveTo(artifact.lat, artifact.lng);
           },
         ),
-    };
+    ];
   }
-}
 
-/// Thông báo thay cho bản đồ (chưa có vị trí, chưa có khoá…).
-class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.title, required this.text});
-
-  final IconData icon;
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.surfaceTint,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 48, color: AppColors.textSecondary),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
+  void _showBeacon(MapBeacon beacon) {
+    final snippet = _beaconSnippet(beacon);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            snippet == null ? beacon.name : '${beacon.name} · $snippet',
           ),
+          duration: const Duration(seconds: 3),
         ),
-      ),
-    );
-  }
-}
-
-/// Thay Google Maps trong `flutter test`: mỗi ghim là một nút bấm, bấm vào
-/// chạy đúng hành vi của ghim (hoặc của bong bóng, nếu ghim mở bong bóng).
-class _TestMapStub extends StatelessWidget {
-  const _TestMapStub({required this.markers});
-
-  final Set<Marker> markers;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.surfaceTint,
-      child: ListView(
-        padding: const EdgeInsets.only(top: 120, bottom: 200),
-        children: [
-          for (final m in markers)
-            TextButton(
-              key: ValueKey(m.markerId.value),
-              onPressed: m.onTap ?? m.infoWindow.onTap,
-              child: Text(m.infoWindow.title ?? m.markerId.value),
-            ),
-        ],
-      ),
-    );
+      );
   }
 }
 

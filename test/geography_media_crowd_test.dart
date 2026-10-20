@@ -203,6 +203,41 @@ void main() {
       expect(repo.forArtifact('uuid-x'), isNull);
     });
 
+    test('mức đông theo điểm tham quan: mỗi điểm một request, lỗi giữ số cũ',
+        () async {
+      final paths = <String>[];
+      var fail = false;
+      final repo = CrowdRepository(api: _api((req) async {
+        paths.add(req.url.path);
+        if (fail && req.url.path.contains('attr-b')) {
+          return _json({'message': 'boom'}, 500);
+        }
+        final id = req.url.pathSegments[req.url.pathSegments.length - 2];
+        return _json({
+          'attractionId': id,
+          'attractionName': id,
+          'activeDeviceCount': id == 'attr-a' ? 5 : 0,
+          'beaconCount': id == 'attr-a' ? 2 : 1,
+          'ttlSeconds': 300,
+        });
+      }));
+
+      // id rỗng (mục "Tất cả hiện vật" khi chạy mock) không được gọi.
+      await repo.refreshAttractions(['attr-a', 'attr-b', '']);
+
+      expect(paths.toSet(), {
+        '/api/v1/attractions/attr-a/crowd',
+        '/api/v1/attractions/attr-b/crowd',
+      });
+      expect(repo.forAttraction('attr-a')?.label, '~5 khách đang ở khu này');
+      expect(repo.forAttraction('attr-b')?.label, 'Đang vắng khách');
+      expect(repo.forAttraction('attr-b')?.isMeasurable, isTrue);
+
+      fail = true;
+      await repo.refreshAttractions(['attr-b']);
+      expect(repo.forAttraction('attr-b')?.beaconCount, 1);
+    });
+
     test('lỗi thì giữ số cũ', () async {
       var fail = false;
       final repo = CrowdRepository(api: _api((_) async {

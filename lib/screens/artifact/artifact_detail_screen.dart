@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
+import '../../state/language_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
 import '../../widgets/rich_text_content.dart';
 import '../audio/audio_player_screen.dart';
 import '../feedback/feedback_screen.dart';
+import '../profile/language_screen.dart';
 
 class ArtifactDetailScreen extends StatefulWidget {
   const ArtifactDetailScreen({
@@ -38,7 +40,19 @@ class _ArtifactDetailScreenState extends State<ArtifactDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final artifact = widget.artifact;
+    // Theo bản mới nhất trong kho: đổi ngôn ngữ (vd. từ nút "Đổi ngôn ngữ" ngay trên
+    // trang này) thì kho tải lại, trang hiện đúng nội dung thứ tiếng mới khi quay về.
+    return ListenableBuilder(
+      listenable: ArtifactRepository.instance,
+      builder: (context, _) => _build(
+        context,
+        ArtifactRepository.instance.tryById(widget.artifact.id) ??
+            widget.artifact,
+      ),
+    );
+  }
+
+  Widget _build(BuildContext context, Artifact artifact) {
     return Scaffold(
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
@@ -276,18 +290,81 @@ class _IntroTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        // description là HTML do trình soạn thảo của admin sinh ra, không phải
-        // chữ thuần — phải parse mới thấy in đậm/danh sách như bên admin.
-        RichTextContent(html: artifact.description),
-        const SizedBox(height: 24),
-        // Thuyết minh có màn hình riêng (kiểu now-playing) chứ không còn là tab.
-        FilledButton.icon(
-          onPressed: () => Navigator.of(context)
-              .push(AudioPlayerScreen.route(artifact)),
-          icon: const Icon(Icons.headphones_rounded, size: 20),
-          label: const Text('Nghe thuyết minh âm thanh'),
-        ),
+        if (artifact.unavailableLanguage case final code?)
+          _LanguageUnavailable(code: code)
+        else ...[
+          // description là HTML do trình soạn thảo của admin sinh ra, không phải
+          // chữ thuần — phải parse mới thấy in đậm/danh sách như bên admin.
+          RichTextContent(html: artifact.description),
+          const SizedBox(height: 24),
+          // Thuyết minh có màn hình riêng (kiểu now-playing) chứ không còn là tab.
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context)
+                .push(AudioPlayerScreen.route(artifact)),
+            icon: const Icon(Icons.headphones_rounded, size: 20),
+            label: const Text('Nghe thuyết minh âm thanh'),
+          ),
+        ],
       ],
+    );
+  }
+}
+
+/// Hiện vật chưa có bản ngôn ngữ khách đang chọn: nói rõ thay vì để trống phần giới
+/// thiệu và nút nghe không có gì để phát. Backend không lấy thứ tiếng khác thay vào.
+class _LanguageUnavailable extends StatelessWidget {
+  const _LanguageUnavailable({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = LanguageController.labels[code]?.$2 ?? code.toUpperCase();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.translate, color: AppColors.accent, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Hiện vật này chưa có bản $name',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Phần giới thiệu và thuyết minh âm thanh chưa được soạn cho ngôn ngữ '
+            'bạn đang chọn. Hãy chọn ngôn ngữ khác để xem.',
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.45,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LanguageScreen()),
+            ),
+            icon: const Icon(Icons.language, size: 18),
+            label: const Text('Đổi ngôn ngữ'),
+          ),
+        ],
+      ),
     );
   }
 }

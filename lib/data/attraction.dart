@@ -3,7 +3,15 @@ import 'mock_data.dart';
 /// Khu du lịch (`GET /tourism-areas`) — cấp 1 của bản đồ, chứa các điểm tham
 /// quan. Toạ độ do admin ghim trong CRM, có thể chưa có.
 class TourismArea {
-  const TourismArea({required this.id, required this.name, this.lat, this.lng});
+  const TourismArea({
+    required this.id,
+    required this.name,
+    this.lat,
+    this.lng,
+    this.description,
+    this.address,
+    this.imageUrl,
+  });
 
   factory TourismArea.fromJson(Map<String, dynamic> json) {
     final lat = (json['latitude'] as num?)?.toDouble();
@@ -14,13 +22,26 @@ class TourismArea {
       name: (json['name'] as String?) ?? '',
       lat: pinned ? lat : null,
       lng: pinned ? lng : null,
+      description: _text(json['description']),
+      address: _text(json['address']),
+      // Ảnh bìa admin tải lên — URL tuyệt đối theo PUBLIC_BASE_URL của backend.
+      imageUrl: Artifact.resolveMediaUrl(json['imageUrl'] as String?),
     );
+  }
+
+  /// Chuỗi rỗng/toàn khoảng trắng coi như chưa nhập.
+  static String? _text(Object? raw) {
+    final text = (raw as String?)?.trim();
+    return text == null || text.isEmpty ? null : text;
   }
 
   final String id;
   final String name;
   final double? lat;
   final double? lng;
+  final String? description;
+  final String? address;
+  final String? imageUrl;
 
   bool get isPinned => lat != null && lng != null;
 }
@@ -66,6 +87,9 @@ class Attraction {
     this.tourismAreaId,
     this.isIndoor = false,
     this.floorPlanUrl,
+    this.floorId,
+    this.planBlock,
+    this.mapBlock,
   });
 
   factory Attraction.fromJson(Map<String, dynamic> json) => Attraction(
@@ -74,6 +98,9 @@ class Attraction {
         tourismAreaId: json['tourismAreaId'] as String?,
         isIndoor: json['mapType'] == 'INDOOR',
         floorPlanUrl: Artifact.resolveMediaUrl(json['floorPlanUrl'] as String?),
+        floorId: json['floorId'] as String?,
+        planBlock: _ring(json['areaMapBoundary']),
+        mapBlock: _ring(json['boundary']),
       );
 
   final String id;
@@ -85,7 +112,60 @@ class Attraction {
   final bool isIndoor;
   final String? floorPlanUrl;
 
+  /// Tầng của khu du lịch mà khu vực nằm trên; `null` = không thuộc tầng nào.
+  final String? floorId;
+
+  /// Khối admin vẽ trên **sơ đồ tầng** (`areaMapBoundary`): các đỉnh (x, y)
+  /// theo tỉ lệ 0..1 từ góc trên trái ảnh, như mapX/mapY.
+  final List<(double, double)>? planBlock;
+
+  /// Khối admin vẽ trên **bản đồ thật** (`boundary`): các đỉnh (lng, lat) —
+  /// dùng cho tầng không có ảnh sơ đồ (vd. tầng trệt ngoài trời).
+  final List<(double, double)>? mapBlock;
+
   bool get hasFloorPlan => isIndoor && floorPlanUrl != null;
+
+  /// Vòng ngoài của GeoJSON Polygon, bỏ đỉnh cuối lặp lại đỉnh đầu.
+  static List<(double, double)>? _ring(Object? geo) {
+    if (geo is! Map || geo['type'] != 'Polygon') return null;
+    final rings = geo['coordinates'];
+    if (rings is! List || rings.isEmpty || rings.first is! List) return null;
+    final points = <(double, double)>[
+      for (final p in rings.first as List)
+        if (p is List && p.length >= 2 && p[0] is num && p[1] is num)
+          ((p[0] as num).toDouble(), (p[1] as num).toDouble()),
+    ];
+    if (points.length > 1 && points.first == points.last) points.removeLast();
+    return points.length >= 3 ? points : null;
+  }
+}
+
+/// Tầng của một khu du lịch (`GET /tourism-areas/:id/floors`).
+///
+/// Có [floorPlanUrl] thì khu vực trên tầng là khối vẽ trên ảnh sơ đồ
+/// ([Attraction.planBlock]); không có thì khối vẽ trên bản đồ thật
+/// ([Attraction.mapBlock]).
+class Floor {
+  const Floor({
+    required this.id,
+    required this.name,
+    this.sortOrder = 0,
+    this.floorPlanUrl,
+  });
+
+  factory Floor.fromJson(Map<String, dynamic> json) => Floor(
+        id: (json['id'] as String?) ?? '',
+        name: (json['name'] as String?) ?? '',
+        sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+        floorPlanUrl: Artifact.resolveMediaUrl(json['floorPlanUrl'] as String?),
+      );
+
+  final String id;
+  final String name;
+
+  /// Thứ tự admin xếp ở trang Khu vực — app giữ đúng thứ tự đó.
+  final int sortOrder;
+  final String? floorPlanUrl;
 }
 
 /// Một điểm đặt trên sơ đồ tầng, theo tỉ lệ 0..1 của ảnh (không phải pixel).

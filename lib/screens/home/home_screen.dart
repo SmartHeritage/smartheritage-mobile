@@ -100,12 +100,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final results = _results;
     // Không bọc Scaffold riêng: dùng Scaffold của MainShell để nút menu ở
     // header mở được sidebar qua Scaffold.of(context).
+    // Không chừa lề dưới ở SafeArea: danh sách chạy xuống sau thanh điều hướng
+    // kính mờ, lề cuối danh sách đã cộng chiều cao thanh.
     return SafeArea(
+      bottom: false,
       child: RefreshIndicator(
         color: AppColors.primary,
         onRefresh: ArtifactRepository.instance.refresh,
         child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        padding: EdgeInsets.fromLTRB(
+          20, 12, 20, 24 + MediaQuery.paddingOf(context).bottom),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           _buildHeader(context),

@@ -181,6 +181,18 @@ class ArtifactRepository extends ChangeNotifier {
     return AttractionMap.fromJson(data, lookup: tryById);
   }
 
+  /// Tầng của khu du lịch, theo thứ tự admin xếp. Khu du lịch mock (không có
+  /// trên backend) hay mất mạng thì ném lỗi — bên gọi hiện danh sách khu vực
+  /// như cũ.
+  Future<List<Floor>> fetchFloors(String tourismAreaId) async {
+    final data = await _api.get('/tourism-areas/$tourismAreaId/floors');
+    if (data is! List) {
+      throw ApiException('Máy chủ trả về dữ liệu không hợp lệ.');
+    }
+    return data.whereType<Map<String, dynamic>>().map(Floor.fromJson).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
   /// Ảnh của hiện vật (`GET /artifacts/:id/media`, loại IMAGE và
   /// GALLERY_IMAGE), theo đúng thứ tự backend sắp. Hiện vật mock (id không phải
   /// UUID) thì không có gì để hỏi.

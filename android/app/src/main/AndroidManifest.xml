@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Tải bản đồ Google Maps và dữ liệu từ internet -->
+    <!-- Tải bản đồ Mapbox và dữ liệu từ internet. Quyền CAMERA cho quét QR do
+         plugin mobile_scanner tự khai báo. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Định vị GPS người dùng trên bản đồ -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -39,11 +40,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Khoá Google Maps SDK, lấy từ GOOGLE_MAPS_API_KEY trong
-             android/local.properties (xem build.gradle.kts). -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${googleMapsApiKey}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

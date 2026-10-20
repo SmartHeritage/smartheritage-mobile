@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../data/artifact_repository.dart';
 import '../state/visit_history_state.dart';
-import '../theme/app_theme.dart';
 import '../widgets/app_sidebar.dart';
+import '../widgets/glass_nav_bar.dart';
 import '../widgets/mini_player_bar.dart';
+import '../widgets/scan_choice_sheet.dart';
 import 'favorites/favorites_screen.dart';
 import 'home/home_screen.dart';
 import 'home/home_screen_v2.dart';
@@ -55,59 +56,70 @@ class _MainShellState extends State<MainShell> {
   /// `flutter run --dart-define=HOME_V2=true`
   static const _useHomeV2 = bool.fromEnvironment('HOME_V2');
 
-  static const _screens = <Widget>[
-    HomeScreen(),
-    MapScreen(),
-    FavoritesScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    void openTab(int i) => setState(() => _index = i);
+
+    final screens = <Widget>[
+      _useHomeV2 ? HomeScreenV2(onOpenTab: openTab) : const HomeScreen(),
+      const MapScreen(),
+      const FavoritesScreen(),
+      const ProfileScreen(),
+    ];
     return Scaffold(
       // Sidebar đặt ở đây (không ở HomeScreen) để phủ cả bottom nav + mini-player.
       // V2 bỏ hẳn sidebar: drawer null thì mất luôn cả cử chỉ vuốt mép màn
       // hình, không chỉ mất nút menu.
       drawer: _useHomeV2 ? null : const AppSidebar(),
-      // Chế độ V2 không có tab: trang chủ là toàn bộ app, các màn hình khác
-      // mở bằng lưới tính năng và push thành route.
-      body: _useHomeV2
-          ? const HomeScreenV2()
-          : IndexedStack(index: _index, children: _screens),
+      // Thanh dưới là kính mờ nổi: nội dung phải chạy xuống sau nó mới thấy
+      // hiệu ứng. Các tab tự cộng `MediaQuery.paddingOf(context).bottom` (chiều
+      // cao thanh + mini-player) vào lề dưới để phần cuối không bị che.
+      extendBody: true,
+      body: IndexedStack(index: _index, children: screens),
+      // Thanh luôn hiện, không tự ẩn khi cuộn (đã bỏ theo yêu cầu 2026-10-20).
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const MiniPlayerBar(),
-          if (!_useHomeV2)
-            NavigationBar(
-              selectedIndex: _index,
-              onDestinationSelected: (i) => setState(() => _index = i),
-              backgroundColor: Colors.white,
-              indicatorColor: AppColors.surfaceTint,
-              surfaceTintColor: Colors.transparent,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.explore_outlined),
-                  selectedIcon: Icon(Icons.explore, color: AppColors.primary),
-                  label: 'Khám phá',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.map_outlined),
-                  selectedIcon: Icon(Icons.map, color: AppColors.primary),
-                  label: 'Bản đồ',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.favorite_border),
-                  selectedIcon: Icon(Icons.favorite, color: AppColors.primary),
-                  label: 'Yêu thích',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person, color: AppColors.primary),
-                  label: 'Cá nhân',
-                ),
-              ],
+          GlassNavBar(
+            currentIndex: _index,
+            onTap: openTab,
+            // Nút quét to giữa Bản đồ và Yêu thích: chọn quét QR hoặc beacon.
+            centerButton: GlassNavCenterButton(
+              icon: Icons.qr_code_scanner,
+              label: 'Quét mã QR hoặc beacon',
+              onTap: () => showScanChoiceSheet(context),
             ),
+            items: [
+              // V2 có tiêu đề "Trang chủ" nên tab đầu gọi đúng tên đó.
+              _useHomeV2
+                  ? const GlassNavItem(
+                      icon: Icons.home_outlined,
+                      selectedIcon: Icons.home,
+                      label: 'Trang chủ',
+                    )
+                  : const GlassNavItem(
+                      icon: Icons.explore_outlined,
+                      selectedIcon: Icons.explore,
+                      label: 'Khám phá',
+                    ),
+              const GlassNavItem(
+                icon: Icons.map_outlined,
+                selectedIcon: Icons.map,
+                label: 'Bản đồ',
+              ),
+              const GlassNavItem(
+                icon: Icons.favorite_border,
+                selectedIcon: Icons.favorite,
+                label: 'Yêu thích',
+              ),
+              const GlassNavItem(
+                icon: Icons.person_outline,
+                selectedIcon: Icons.person,
+                label: 'Cá nhân',
+              ),
+            ],
+          ),
         ],
       ),
     );

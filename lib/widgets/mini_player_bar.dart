@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../screens/audio/audio_player_screen.dart';
 import '../state/audio_player_state.dart';
 import '../theme/app_theme.dart';
@@ -10,6 +11,11 @@ import 'artifact_widgets.dart';
 class MiniPlayerBar extends StatelessWidget {
   const MiniPlayerBar({super.key});
 
+  /// Thanh có đang hiện không — thanh điều hướng dựa vào đây để thu nút quét vào
+  /// trong thanh, khỏi đè lên mini-player.
+  static bool isShown(AudioPlayerController controller) =>
+      controller.artifact != null && controller.error == null;
+
   @override
   Widget build(BuildContext context) {
     final controller = AudioPlayerController.instance;
@@ -17,10 +23,11 @@ class MiniPlayerBar extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         final artifact = controller.artifact;
-        if (artifact == null) return const SizedBox.shrink();
         // Không có bản thu hoặc mở file hỏng thì đừng treo một thanh phát đứng
         // im ở đáy màn hình — màn thuyết minh đã nói rõ lý do rồi.
-        if (controller.error != null) return const SizedBox.shrink();
+        if (artifact == null || !isShown(controller)) {
+          return const SizedBox.shrink();
+        }
 
         return SafeArea(
           bottom: false,
@@ -75,8 +82,8 @@ class MiniPlayerBar extends StatelessWidget {
                               const SizedBox(height: 2),
                               Text(
                                 controller.isMuted
-                                    ? 'Thuyết minh · đã tắt tiếng'
-                                    : 'Thuyết minh âm thanh',
+                                    ? context.l10n.playerNarrationMuted
+                                    : context.l10n.playerNarration,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -95,8 +102,8 @@ class MiniPlayerBar extends StatelessWidget {
                           padding: const EdgeInsets.all(6),
                           onPressed: controller.toggleMute,
                           tooltip: controller.isMuted
-                              ? 'Bật tiếng'
-                              : 'Tắt tiếng',
+                              ? context.l10n.playerUnmute
+                              : context.l10n.playerMute,
                           icon: Icon(
                             controller.isMuted
                                 ? Icons.volume_off_rounded
@@ -120,6 +127,21 @@ class MiniPlayerBar extends StatelessWidget {
                             size: 26,
                           ),
                         ),
+                        // Chỉ khi nghe theo Danh sách nghe — bài lẻ thì
+                        // không có "bài kế".
+                        if (controller.hasNext)
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            constraints: const BoxConstraints(minWidth: 36),
+                            padding: const EdgeInsets.all(6),
+                            onPressed: controller.next,
+                            tooltip: context.l10n.playerNext,
+                            icon: const Icon(
+                              Icons.skip_next_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           constraints: const BoxConstraints(minWidth: 32),

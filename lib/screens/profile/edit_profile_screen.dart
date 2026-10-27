@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/api_client.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
@@ -12,11 +13,11 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  /// Backend dùng enum MALE/FEMALE/OTHER, màn hình hiện nhãn tiếng Việt.
-  static const _genderLabels = {
-    'MALE': 'Nam',
-    'FEMALE': 'Nữ',
-    'OTHER': 'Khác',
+  /// Backend dùng enum MALE/FEMALE/OTHER, màn hình hiện nhãn theo ngôn ngữ.
+  Map<String, String> get _genderLabels => {
+    'MALE': context.l10n.genderMale,
+    'FEMALE': context.l10n.genderFemale,
+    'OTHER': context.l10n.genderOther,
   };
 
   late final TextEditingController _nameController;
@@ -52,9 +53,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         gender: _gender,
       );
       if (!mounted) return;
+      final saved = context.l10n.editProfileSaved;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Đã cập nhật thông tin cá nhân'),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(saved),
       ));
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -66,7 +68,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chỉnh sửa thông tin')),
+      appBar: AppBar(title: Text(context.l10n.editProfileTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: Column(
@@ -105,7 +107,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            _fieldLabel('Họ và tên'),
+            _fieldLabel(context.l10n.fieldFullName),
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -113,7 +115,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            _fieldLabel('Email'),
+            _fieldLabel(context.l10n.fieldEmail),
             TextField(
               controller: _emailController,
               // Đổi email là đổi định danh đăng nhập — không mở ở màn hình này.
@@ -124,7 +126,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            _fieldLabel('Số điện thoại'),
+            _fieldLabel(context.l10n.fieldPhone),
             TextField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
@@ -133,7 +135,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            _fieldLabel('Giới tính'),
+            _fieldLabel(context.l10n.fieldGender),
             Row(
               children: [
                 for (final entry in _genderLabels.entries)
@@ -165,7 +167,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Lưu thay đổi'),
+                  : Text(context.l10n.saveChanges),
             ),
           ],
         ),

@@ -23,6 +23,17 @@ class AppConfig {
     return 'http://localhost:3000/api/v1';
   }
 
+  /// Web client ID (OAuth) của project Firebase `smart-heritage-e592f` — để
+  /// Google cấp ID token mà Firebase chấp nhận. Android bắt buộc có, iOS đọc
+  /// thêm `CLIENT_ID` trong GoogleService-Info.plist. Không phải bí mật nên có
+  /// sẵn giá trị mặc định; đổi project thì truyền
+  /// `--dart-define=GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com`.
+  static const String googleClientId = String.fromEnvironment(
+    'GOOGLE_CLIENT_ID',
+    defaultValue:
+        '513399865384-egj4e651rvglii4l1uivol66ggr4cll8.apps.googleusercontent.com',
+  );
+
   /// Thời gian chờ tối đa cho một request.
   static const Duration requestTimeout = Duration(seconds: 10);
 
@@ -37,21 +48,31 @@ class AppConfig {
   static const List<int> demoMinors = [101, 102, 103, 104, 105];
 
   /// Các proximity UUID app lắng nghe. Mặc định là UUID demo; beacon thật
-  /// phát UUID khác thì truyền khi build (nhiều UUID cách nhau dấu phẩy):
+  /// phát UUID khác thì truyền khi build (nhiều UUID cách nhau dấu phẩy, viết
+  /// liền 32 ký tự như admin hay có gạch nối đều được):
   /// `flutter run --dart-define=BEACON_UUIDS=<uuid1>,<uuid2>`
   static List<String> get beaconUuids {
-    const raw = String.fromEnvironment('BEACON_UUIDS');
-    final uuids = [
-      for (final part in raw.split(','))
-        if (_uuidPattern.hasMatch(part.trim())) part.trim(),
-    ];
+    final uuids = parseBeaconUuids(const String.fromEnvironment('BEACON_UUIDS'));
     return uuids.isEmpty ? const [demoProximityUuid] : uuids;
   }
 
-  static final _uuidPattern = RegExp(
-    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-    caseSensitive: false,
-  );
+  /// Tách chuỗi `BEACON_UUIDS`, trả về dạng có gạch nối 8-4-4-4-12 — CoreLocation
+  /// (iOS) chỉ nhận UUID dạng chuẩn, admin thì hiện dạng 32 ký tự liền. Phần
+  /// sai định dạng bị bỏ qua.
+  @visibleForTesting
+  static List<String> parseBeaconUuids(String raw) => [
+        for (final part in raw.split(','))
+          if (_uuidHex.hasMatch(_compact(part))) _hyphenate(_compact(part)),
+      ];
+
+  static String _compact(String uuid) =>
+      uuid.replaceAll(RegExp(r'[\s-]'), '').toLowerCase();
+
+  static String _hyphenate(String c) => '${c.substring(0, 8)}-'
+      '${c.substring(8, 12)}-${c.substring(12, 16)}-'
+      '${c.substring(16, 20)}-${c.substring(20)}';
+
+  static final _uuidHex = RegExp(r'^[0-9a-f]{32}$');
 
   /// Dùng bộ quét giả thay cho Bluetooth thật — để trình diễn khi không có
   /// beacon, hoặc chạy trên simulator (không có Bluetooth):

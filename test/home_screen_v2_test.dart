@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartheritage/data/news_repository.dart';
+import 'package:smartheritage/screens/favorites/favorites_screen.dart';
 import 'package:smartheritage/screens/home/home_screen_v2.dart';
+import 'package:smartheritage/screens/map/map_screen.dart';
 import 'package:smartheritage/theme/app_theme.dart';
 
 void main() {
@@ -23,11 +26,11 @@ void main() {
         'Bản đồ',
         'Quét beacon',
         'Yêu thích',
-        'Đang nghe',
+        'Giới thiệu',
         'Lịch sử',
         'Góp ý',
         'Trợ giúp',
-        'Tài khoản',
+        'Cài đặt',
       ]) {
         expect(find.text(label), findsOneWidget, reason: 'thiếu ô $label');
       }
@@ -61,26 +64,80 @@ void main() {
     expect(tinTuc, greaterThan(noiBat));
   });
 
-  testWidgets('ô Bản đồ / Yêu thích chuyển tab thay vì mở màn mới',
+  testWidgets('ô Bản đồ và Yêu thích mở trang riêng, không chuyển tab',
       (tester) async {
     tester.view.physicalSize = const Size(390 * 3, 844 * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
-    final opened = <int>[];
     await tester.pumpWidget(MaterialApp(
       theme: AppTheme.light,
-      home: Scaffold(body: HomeScreenV2(onOpenTab: opened.add)),
+      home: const Scaffold(body: HomeScreenV2()),
     ));
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.tap(find.text('Bản đồ'));
-    await tester.pump();
+    // Tab thứ hai/thứ ba giờ là Danh sách nghe và Thông báo.
     await tester.tap(find.text('Yêu thích'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byType(FavoritesScreen), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
-    expect(opened, [1, 2]);
-    // Không push route nào: vẫn đứng ở trang chủ.
-    expect(find.text('Trang chủ'), findsOneWidget);
+    await tester.tap(find.text('Bản đồ'));
+    await tester.pumpAndSettle();
+    expect(find.byType(MapScreen), findsOneWidget);
+  });
+
+  testWidgets('ô lưới nhún khi nhấn và rung nhẹ khi bấm, không có vệt loang',
+      (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    final haptics = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') haptics.add(call.arguments);
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.light,
+      home: const Scaffold(body: HomeScreenV2()),
+    ));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    double scaleOf(String label) => tester
+        .widget<AnimatedScale>(find.descendant(
+          of: find.ancestor(
+            of: find.text(label),
+            matching: find.byType(GestureDetector),
+          ).first,
+          matching: find.byType(AnimatedScale),
+        ))
+        .scale;
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Giới thiệu')),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(scaleOf('Giới thiệu'), 0.9);
+
+    await gesture.up();
+    await tester.pump();
+    expect(scaleOf('Giới thiệu'), 1);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
+    await tester.pumpAndSettle();
+
+    // Không còn InkWell trong ô lưới.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(
+      find.ancestor(of: find.text('Lịch sử'), matching: find.byType(InkWell)),
+      findsNothing,
+    );
   });
 }

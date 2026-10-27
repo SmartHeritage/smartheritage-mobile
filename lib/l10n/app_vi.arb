@@ -1,0 +1,499 @@
+{
+  "@@locale": "vi",
+  "appTitle": "Smart Heritage",
+  "@appTitle": {
+    "description": "Tên app"
+  },
+  "navScan": "Quét mã QR hoặc beacon",
+  "navHome": "Trang chủ",
+  "navExplore": "Khám phá",
+  "navMap": "Bản đồ",
+  "navFavorites": "Yêu thích",
+  "navProfile": "Cá nhân",
+  "navPlaylist": "Danh sách nghe",
+  "navNotifications": "Thông báo",
+  "inboxTitle": "Thông báo",
+  "inboxMarkAllRead": "Đánh dấu tất cả đã đọc",
+  "inboxEmpty": "Chưa có thông báo nào. Tin tức và sự kiện mới từ ban quản lý sẽ hiện ở đây.",
+  "inboxLoginTitle": "Đăng nhập để nhận thông báo",
+  "inboxLoginMessage": "Tin tức và sự kiện mới từ ban quản lý sẽ được gửi tới bạn sau khi đăng nhập.",
+  "inboxNew": "Mới",
+  "playlistTitle": "Danh sách nghe",
+  "playlistSummary": "{count} bản thuyết minh",
+  "@playlistSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playlistPlayAll": "Phát tất cả",
+  "playlistEmpty": "Chưa có hiện vật nào có thuyết minh.",
+  "playerNext": "Bài tiếp theo",
+  "playerPrevious": "Bài trước",
+  "playerNarrationMuted": "Thuyết minh · đã tắt tiếng",
+  "playerNarration": "Thuyết minh âm thanh",
+  "playerUnmute": "Bật tiếng",
+  "playerMute": "Tắt tiếng",
+  "scanSheetTitle": "Nhận diện hiện vật",
+  "scanQrTitle": "Quét mã QR",
+  "scanQrSubtitle": "Quét mã trên bảng giới thiệu cạnh hiện vật",
+  "scanBeaconTitle": "Quét beacon",
+  "scanBeaconActive": "Đang quét — app tự giới thiệu hiện vật khi bạn đến gần",
+  "scanBeaconIdle": "Tự nhận hiện vật khi bạn đứng gần beacon",
+  "artifactImageComingSoon": "Ảnh cập nhật sau",
+  "saveFailedRetry": "Không lưu được thay đổi, vui lòng thử lại.",
+  "favoriteRemoved": "Đã xoá khỏi danh sách yêu thích",
+  "favoriteAdded": "Đã lưu vào danh sách yêu thích",
+  "seeAll": "Xem tất cả",
+  "splashTagline": "Trợ lý du lịch số cho khu di tích",
+  "homeGreeting": "Xin chào, {name}",
+  "@homeGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeScanning": "Đang quét",
+  "homeHistory": "Lịch sử",
+  "homeFeedback": "Góp ý",
+  "homeHelp": "Trợ giúp",
+  "homeAccount": "Tài khoản",
+  "settingsTitle": "Cài đặt",
+  "accountInfoTitle": "Thông tin tài khoản",
+  "accountNotSet": "Chưa cập nhật",
+  "accountLoginTitle": "Đăng nhập để xem thông tin tài khoản",
+  "homeFeatured": "Nổi bật",
+  "homeNews": "Tin tức",
+  "homeRecentVisits": "Tham quan gần đây",
+  "homeOffline": "Chưa kết nối được máy chủ — đang xem dữ liệu sẵn có.",
+  "retry": "Thử lại",
+  "homeOfficialApp": "Ứng dụng chính thức",
+  "homeAbout": "Giới thiệu",
+  "aboutTagline": "Người bạn đồng hành khi tham quan di sản",
+  "aboutIntroHeading": "Về Smart Heritage",
+  "aboutIntroBody": "Smart Heritage là ứng dụng hướng dẫn tham quan bảo tàng và khu di tích. Ứng dụng kể lại câu chuyện của từng hiện vật bằng hình ảnh, bài viết và thuyết minh âm thanh, giúp bạn tự khám phá theo nhịp của mình mà không cần chờ hướng dẫn viên.\n\nKhi bạn đến gần một hiện vật có gắn thiết bị iBeacon, ứng dụng tự nhận ra và mở phần giới thiệu, phát thuyết minh ngay tại chỗ. Mọi nội dung đều do ban quản lý khu di tích biên soạn và cập nhật.",
+  "aboutFeaturesHeading": "Bạn có thể làm gì",
+  "aboutFeatureDiscover": "Xem thông tin, hình ảnh và đánh giá của từng hiện vật.",
+  "aboutFeatureListen": "Nghe thuyết minh âm thanh bằng nhiều ngôn ngữ, hoặc nghe lần lượt cả danh sách.",
+  "aboutFeatureScan": "Quét mã QR trên bảng giới thiệu, hoặc bật quét iBeacon để ứng dụng tự nhận diện hiện vật gần bạn.",
+  "aboutFeatureMap": "Xem bản đồ các địa điểm, sơ đồ từng tầng và khu vực trưng bày.",
+  "aboutFeatureNews": "Nhận tin tức, sự kiện mới từ ban quản lý và lưu lại lịch sử tham quan của bạn.",
+  "aboutHowHeading": "Bắt đầu thế nào",
+  "aboutHowBody": "Đăng nhập để mở khoá thuyết minh, quét hiện vật và thông báo. Sau đó bấm nút quét ở giữa thanh điều hướng khi đứng trước hiện vật, hoặc mở Danh sách nghe để nghe trước ở nhà. Hãy bật Bluetooth và cho phép truy cập vị trí để tính năng iBeacon hoạt động.",
+  "aboutVersion": "Phiên bản {version}",
+  "@aboutVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHeroSubtitle": "Đến gần hiện vật, thuyết minh tự phát",
+  "langNameVi": "Tiếng Việt",
+  "langNameEn": "Tiếng Anh",
+  "langNameFr": "Tiếng Pháp",
+  "langNameJa": "Tiếng Nhật",
+  "langNameKo": "Tiếng Hàn",
+  "langNameZh": "Tiếng Trung",
+  "langScreenTitle": "Chọn ngôn ngữ",
+  "langScreenIntro": "Giao diện, nội dung giới thiệu, thuyết minh âm thanh và phụ đề video sẽ hiển thị theo ngôn ngữ bạn chọn.",
+  "confirm": "Xác nhận",
+  "langUpdated": "Đã cập nhật ngôn ngữ hiển thị",
+  "langSavedLocalOnly": "Đã đổi ngôn ngữ trên máy này nhưng chưa lưu được vào tài khoản.",
+  "langUiFallbackNotice": "Giao diện app chưa có bản {language} nên tạm hiển thị bằng tiếng Anh. Nội dung hiện vật vẫn theo {language} khi có.",
+  "@langUiFallbackNotice": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "mapPlacesTitle": "Địa điểm tham quan",
+  "mapAreaCount": "{count, plural, =0{Chưa có khu vực} other{{count} khu vực}}",
+  "@mapAreaCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mapArtifactCount": "{count, plural, other{{count} hiện vật}}",
+  "@mapArtifactCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mapNotPinned": "chưa có vị trí trên bản đồ",
+  "mapScreenTitle": "Bản đồ tham quan",
+  "mapYouAreAt": "Bạn đang ở {place}",
+  "@mapYouAreAt": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "mapPlacesList": "Danh sách địa điểm",
+  "mapNoPinnedPlaces": "Chưa có địa điểm nào được đặt vị trí trên bản đồ. Chọn một địa điểm để xem các khu vực.",
+  "mapYouAreHereWith": "Bạn đang ở đây · {details}",
+  "@mapYouAreHereWith": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "close": "Đóng",
+  "mapViewAreas": "Xem các khu vực",
+  "mapAllArtifacts": "Tất cả hiện vật",
+  "mapPickArea": "Chọn một khu vực để xem bản đồ",
+  "mapPickFloor": "Chọn tầng để xem sơ đồ khu vực",
+  "mapOtherAreas": "Khu vực khác",
+  "mapFloorPlan": "Sơ đồ tầng",
+  "mapOnThisFloor": "Bạn đang ở tầng này",
+  "mapNoArtifacts": "Chưa có hiện vật",
+  "mapYouAreHere": "Bạn đang ở đây",
+  "mapFloorNoPlan": "Tầng này chưa có sơ đồ",
+  "mapPickAreaBelow": "Chọn một khu vực bên dưới để xem bản đồ của nó.",
+  "mapFloorPlanLoadFailed": "Không tải được sơ đồ tầng",
+  "mapFloorNoAreas": "Tầng này chưa có khu vực nào.",
+  "mapPlanLoadFailed": "Không tải được sơ đồ.",
+  "mapAttractionNoPlan": "Điểm tham quan này chưa có sơ đồ tầng.",
+  "crowdQuiet": "Đang vắng khách",
+  "crowdAroundHere": "~{count} khách quanh đây",
+  "@crowdAroundHere": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "crowdAroundZone": "~{count} khách quanh khu vực {zone}",
+  "@crowdAroundZone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "zone": {
+        "type": "String"
+      }
+    }
+  },
+  "crowdHere": "~{count} khách đang ở đây",
+  "@crowdHere": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "crowdInArea": "~{count} khách đang ở khu này",
+  "@crowdInArea": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "locationServiceOff": "Vui lòng bật GPS/Vị trí trên thiết bị rồi thử lại.",
+  "locationDeniedForever": "Quyền vị trí đang bị chặn. Hãy bật lại trong Cài đặt của máy.",
+  "locationNeeded": "Ứng dụng cần quyền vị trí để định vị bạn trên bản đồ.",
+  "mapNoLocationTitle": "Chưa có vị trí trên bản đồ",
+  "mapNoLocationText": "Điểm tham quan này chưa có hiện vật hay beacon nào được đặt toạ độ.",
+  "mapYouAreInZone": "Bạn đang ở khu vực {zone}",
+  "@mapYouAreInZone": {
+    "placeholders": {
+      "zone": {
+        "type": "String"
+      }
+    }
+  },
+  "mapDistanceFromYou": "{zone} · cách bạn ~{distance}",
+  "@mapDistanceFromYou": {
+    "placeholders": {
+      "zone": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "mapDirections": "Chỉ đường",
+  "details": "Chi tiết",
+  "mapNotReadyTitle": "Bản đồ chưa sẵn sàng",
+  "mapNotReadyText": "Bản build này chưa có token Mapbox. Chạy lại với --dart-define-from-file=mapbox.local.json.",
+  "artifactTabIntro": "Giới thiệu",
+  "artifactTabPhotos": "Hình ảnh",
+  "artifactTabVideo": "Video",
+  "artifactTabReviews": "Đánh giá",
+  "artifactSavedOffline": "Nội dung đã được lưu — bạn có thể tiếp tục xem kể cả khi rời khỏi vùng phủ sóng beacon.",
+  "artifactOverview": "Giới thiệu chung",
+  "artifactListen": "Nghe thuyết minh âm thanh",
+  "artifactNoLanguage": "Hiện vật này chưa có bản {language}",
+  "@artifactNoLanguage": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactNoLanguageText": "Phần giới thiệu và thuyết minh âm thanh chưa được soạn cho ngôn ngữ bạn đang chọn. Hãy chọn ngôn ngữ khác để xem.",
+  "changeLanguage": "Đổi ngôn ngữ",
+  "artifactPhotoPlaceholder": "Ảnh {index}/{total}",
+  "@artifactPhotoPlaceholder": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "videoNarration": "Thuyết minh: {name}",
+  "@videoNarration": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "videoDocumentary": "Phim tư liệu: quá trình phát hiện và bảo tồn",
+  "videoSubtitles": "Video có phụ đề tiếng Việt và tiếng Anh",
+  "audioViewArtifact": "Xem chi tiết hiện vật",
+  "audioNoRecording": "Hiện vật này chưa có bản thuyết minh.",
+  "audioLoading": "Đang tải bản thuyết minh…",
+  "audioLanguage": "Ngôn ngữ thuyết minh",
+  "share": "Chia sẻ",
+  "audioTranscript": "Nội dung thuyết minh",
+  "audioLinkCopied": "Đã sao chép liên kết hiện vật",
+  "back": "Quay lại",
+  "newsUnavailable": "Bài viết này không còn hoặc chưa có bản cho ngôn ngữ bạn chọn.",
+  "newsLoadFailed": "Không tải được nội dung bài viết.",
+  "newsEmpty": "Bài viết chưa có nội dung.",
+  "reviewTagContentGood": "Nội dung hấp dẫn",
+  "reviewTagNarrationClear": "Thuyết minh rõ ràng",
+  "reviewTagWayfindingEasy": "Dễ tìm vị trí",
+  "reviewTagImagesGood": "Hình ảnh đẹp",
+  "reviewTagLanguagesMissing": "Cần thêm ngôn ngữ",
+  "reviewTagAudioPoor": "Âm thanh chưa tốt",
+  "feedbackTitle": "Đánh giá & phản hồi",
+  "rating1": "Rất tệ",
+  "rating2": "Chưa hài lòng",
+  "rating3": "Bình thường",
+  "rating4": "Hài lòng",
+  "rating5": "Tuyệt vời",
+  "feedbackPickRating": "Vui lòng chọn số sao đánh giá",
+  "feedbackThanks": "Cảm ơn bạn! Phản hồi đã được gửi thành công.",
+  "feedbackHowWasVisit": "Trải nghiệm tham quan của bạn hôm nay thế nào?",
+  "feedbackWhatImpressed": "Điều gì khiến bạn ấn tượng?",
+  "feedbackTellUsMore": "Chia sẻ thêm với chúng tôi",
+  "feedbackHint": "Cảm nhận, góp ý của bạn giúp chúng tôi phục vụ tốt hơn...",
+  "feedbackAttachPhoto": "Đính kèm hình ảnh",
+  "feedbackSend": "Gửi phản hồi",
+  "reviewsLoadFailed": "Chưa tải được danh sách đánh giá.",
+  "reviewsEmpty": "Chưa có đánh giá nào. Hãy là người đầu tiên!",
+  "reviewsHeader": "Đánh giá của khách tham quan ({count})",
+  "@reviewsHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "qrNotOurs": "Mã QR này không phải mã hiện vật của SmartHeritage.",
+  "qrTorch": "Đèn pin",
+  "qrAimHint": "Đưa mã QR trên bảng giới thiệu hiện vật vào khung",
+  "qrCameraDenied": "Ứng dụng chưa được dùng camera. Hãy bật quyền Camera cho SmartHeritage trong Cài đặt của máy.",
+  "qrCameraFailed": "Không mở được camera. Thử đóng màn này rồi mở lại.",
+  "beaconSearching": "Đang dò beacon quanh bạn…",
+  "beaconTapToStart": "Chạm để bắt đầu quét",
+  "beaconScanningHint": "Hãy đứng gần hiện vật. Bắt được beacon là app tự giới thiệu hiện vật đó — bạn có thể rời trang này, app vẫn quét tiếp.",
+  "beaconIdleHint": "App dùng Bluetooth để nhận tín hiệu beacon đặt cạnh hiện vật.",
+  "beaconStop": "Tắt quét",
+  "beaconTurnOff": "Tắt quét beacon",
+  "beaconTurnOn": "Bật quét beacon",
+  "beaconStartFailed": "Không khởi động được bộ quét beacon ({detail}).",
+  "@beaconStartFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "beaconLocationServiceOff": "Hãy bật Dịch vụ định vị trong Cài đặt để quét beacon.",
+  "beaconLocationNeeded": "Ứng dụng cần quyền vị trí để nhận tín hiệu beacon. Hãy bật trong Cài đặt.",
+  "beaconGpsOffAndroid": "Hãy bật Dịch vụ vị trí (GPS) — Android cần nó để quét beacon.",
+  "beaconNotReady": "Chưa khởi động được bộ quét beacon.",
+  "bluetoothOff": "Hãy bật Bluetooth để quét beacon.",
+  "bluetoothUnauthorized": "Ứng dụng chưa được phép dùng Bluetooth. Hãy bật trong Cài đặt.",
+  "bluetoothUnsupported": "Thiết bị này không hỗ trợ Bluetooth Low Energy.",
+  "bluetoothNotReady": "Bluetooth chưa sẵn sàng. Hãy thử bật quét lại.",
+  "beaconDetectedVia": "Phát hiện qua iBeacon · cách bạn ~2m",
+  "beaconLater": "Để sau",
+  "beaconExploreNow": "Khám phá ngay",
+  "beaconAudioMuted": "Thuyết minh đang tắt tiếng",
+  "beaconAudioPlaying": "Đang phát thuyết minh âm thanh",
+  "beaconAudioLogin": "Đăng nhập để nghe thuyết minh",
+  "beaconChoiceTitle": "{count, plural, other{Có {count} hiện vật quanh đây}}",
+  "@beaconChoiceTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "beaconChoiceMessage": "Chọn hiện vật bạn muốn xem và nghe thuyết minh.",
+  "beaconChoiceHasAudio": "Có thuyết minh",
+  "favTitle": "Hiện vật yêu thích",
+  "favLoginTitle": "Đăng nhập để lưu yêu thích",
+  "favLoginMessage": "Đăng nhập để lưu và đồng bộ các hiện vật\nyêu thích của bạn trên mọi thiết bị",
+  "favEmptyTitle": "Chưa có hiện vật yêu thích",
+  "favEmptyMessage": "Nhấn ♥ trên hiện vật để lưu lại\nvà xem lại bất cứ lúc nào",
+  "loginOrRegister": "Đăng nhập / Đăng ký",
+  "historyTitle": "Lịch sử tham quan",
+  "historyDetectedAt": "iBeacon phát hiện lúc {time}",
+  "@historyDetectedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "historyClearTitle": "Xoá lịch sử",
+  "historyClearAccount": "Xoá toàn bộ lịch sử tham quan của tài khoản này?",
+  "historyClearDevice": "Xoá toàn bộ lịch sử tham quan trên thiết bị này?",
+  "cancel": "Huỷ",
+  "delete": "Xoá",
+  "historyStatArtifacts": "Hiện vật đã xem",
+  "historyStatDays": "Ngày tham quan",
+  "historyStatAreas": "Khu đã ghé",
+  "historyEmptyTitle": "Chưa có lịch sử tham quan",
+  "historyEmptyMessage": "Khi bạn đến gần một hiện vật, iBeacon sẽ\ntự động ghi lại vào đây",
+  "today": "Hôm nay",
+  "yesterday": "Hôm qua",
+  "audioPlayFailed": "Không phát được bản thuyết minh.",
+  "profileTitle": "Tài khoản của tôi",
+  "profileSectionPersonal": "Cá nhân",
+  "profileEdit": "Chỉnh sửa thông tin cá nhân",
+  "profileLanguage": "Ngôn ngữ",
+  "profileSectionDevice": "Thiết bị",
+  "profileSectionSupport": "Hỗ trợ",
+  "profileRateSite": "Đánh giá khu di tích",
+  "profileNotifications": "Thông báo",
+  "profileHelpFaq": "Trợ giúp & câu hỏi thường gặp",
+  "profileAbout": "Về ứng dụng",
+  "logout": "Đăng xuất",
+  "profileBadge": "Nhà thám hiểm di sản",
+  "profileGuestTitle": "Tham quan có tài khoản riêng",
+  "login": "Đăng nhập",
+  "register": "Đăng ký",
+  "profileBeaconScan": "Quét iBeacon",
+  "profileScanOff": "Đang tắt",
+  "logoutConfirm": "Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?",
+  "loggedOut": "Đã đăng xuất",
+  "editProfileSaved": "Đã cập nhật thông tin cá nhân",
+  "editProfileTitle": "Chỉnh sửa thông tin",
+  "fieldFullName": "Họ và tên",
+  "fieldEmail": "Email",
+  "fieldPhone": "Số điện thoại",
+  "fieldGender": "Giới tính",
+  "genderMale": "Nam",
+  "genderFemale": "Nữ",
+  "genderOther": "Khác",
+  "saveChanges": "Lưu thay đổi",
+  "loginSuccess": "Đăng nhập thành công",
+  "googleSignInFailed": "Không đăng nhập được bằng Google. Vui lòng thử lại.",
+  "googleAccountRejected": "Tài khoản Google này không dùng được (email chưa xác minh hoặc tài khoản đã bị khoá).",
+  "googleLoginDisabled": "Máy chủ chưa bật đăng nhập Google.",
+  "loginWelcome": "Chào mừng trở lại!",
+  "loginSubtitle": "Đăng nhập để đồng bộ lịch sử tham quan\nvà cá nhân hoá trải nghiệm của bạn",
+  "invalidEmail": "Vui lòng nhập email hợp lệ",
+  "fieldPassword": "Mật khẩu",
+  "passwordTooShort": "Mật khẩu tối thiểu 8 ký tự",
+  "forgotPassword": "Quên mật khẩu?",
+  "orContinueWith": "hoặc tiếp tục với",
+  "continueWithGoogle": "Tiếp tục với Google",
+  "noAccount": "Chưa có tài khoản? ",
+  "registerNow": "Đăng ký ngay",
+  "agreeTermsRequired": "Vui lòng đồng ý với điều khoản sử dụng",
+  "registerSuccess": "Tạo tài khoản thành công",
+  "registerTitle": "Tạo tài khoản",
+  "registerSubtitle": "Bắt đầu hành trình khám phá di sản cùng chúng tôi",
+  "nameRequired": "Vui lòng nhập họ tên",
+  "invalidPhone": "Số điện thoại không hợp lệ",
+  "agreePrefix": "Tôi đồng ý với ",
+  "termsOfUse": "Điều khoản sử dụng",
+  "agreeAnd": " và ",
+  "privacyPolicy": "Chính sách bảo mật",
+  "haveAccount": "Đã có tài khoản? ",
+  "guest": "Khách",
+  "invalidServerData": "Máy chủ trả về dữ liệu không hợp lệ.",
+  "serverTimeout": "Máy chủ phản hồi quá lâu.",
+  "serverUnreachable": "Không kết nối được máy chủ.",
+  "error400": "Dữ liệu gửi lên không hợp lệ.",
+  "error401": "Phiên đăng nhập đã hết hạn.",
+  "error403": "Bạn không có quyền thực hiện thao tác này.",
+  "error404": "Không tìm thấy dữ liệu.",
+  "errorServer": "Máy chủ gặp sự cố ({status}).",
+  "@errorServer": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "helpGroup1": "iBeacon & phát hiện hiện vật",
+  "helpGroup2": "Thuyết minh âm thanh",
+  "helpGroup3": "Tài khoản",
+  "helpGroup4": "Bản đồ & vị trí",
+  "helpGroup5": "Thông báo & phản hồi",
+  "helpQ1": "iBeacon là gì và app dùng nó để làm gì?",
+  "helpA1": "Mỗi khu trưng bày được gắn một thiết bị iBeacon phát sóng Bluetooth tầm ngắn. Khi bạn đi tới gần, ứng dụng nhận được sóng và tự nhận ra bạn đang ở cạnh hiện vật nào, rồi mở phần giới thiệu tương ứng. Bạn không phải quét mã hay nhập số hiệu hiện vật.",
+  "helpQ2": "Bật tính năng quét ở đâu?",
+  "helpA2": "Mở sidebar bằng nút menu ở góc trên bên trái trang Khám phá, rồi bật công tắc \"Quét iBeacon\". Công tắc này áp dụng cho toàn ứng dụng, tắt lúc nào cũng được.",
+  "helpQ3": "Vì sao app không phát hiện được hiện vật nào?",
+  "helpA3": "Hãy kiểm tra theo thứ tự: đã bật công tắc \"Quét iBeacon\" trong sidebar chưa, Bluetooth của máy đã mở chưa, và ứng dụng đã được cấp quyền Bluetooth trong phần cài đặt của hệ điều hành chưa. Sóng iBeacon chỉ phủ vài mét, nên bạn cũng cần đứng gần khu trưng bày.",
+  "helpQ4": "Quét iBeacon có tốn pin nhiều không?",
+  "helpA4": "iBeacon dùng Bluetooth Low Energy, tiêu thụ pin rất thấp so với GPS hay 4G. Dù vậy, nếu bạn đã tham quan xong thì nên tắt công tắc trong sidebar để tiết kiệm thêm.",
+  "helpQ5": "Thuyết minh có tự phát không?",
+  "helpA5": "Có. Khi iBeacon phát hiện bạn ở gần một hiện vật, ứng dụng tự mở và phát thuyết minh của hiện vật đó, bạn không cần bấm gì. Nếu muốn nghe lại hoặc nghe hiện vật khác, vào trang chi tiết hiện vật và bấm \"Nghe thuyết minh âm thanh\" ở cuối tab Giới thiệu.",
+  "helpQ6": "Làm sao tắt tiếng khi đang ở nơi cần yên lặng?",
+  "helpA6": "Bấm nút hình loa. Nút này có ở ba nơi: thanh phát nhỏ phía dưới màn hình, khung thông báo khi beacon phát hiện hiện vật, và trang nghe thuyết minh. Tắt tiếng chỉ làm im âm thanh, phần thuyết minh vẫn chạy và bạn vẫn đọc được nội dung chữ.",
+  "helpQ7": "Đổi tốc độ đọc được không?",
+  "helpA7": "Được. Ở trang nghe thuyết minh, bấm nút tốc độ bên phải hàng điều khiển để chuyển lần lượt qua 0.75×, 1×, 1.25× và 1.5×.",
+  "helpQ8": "Đổi ngôn ngữ thuyết minh ở đâu?",
+  "helpA8": "Có hai đường: nút hình chữ dịch ở trang nghe thuyết minh, hoặc vào Tài khoản của tôi → Ngôn ngữ. Sidebar cũng có mục Ngôn ngữ.",
+  "helpQ9": "Đi ra xa hiện vật thì còn xem được nội dung không?",
+  "helpA9": "Còn. Nội dung đã tải sẽ tiếp tục xem được kể cả khi bạn ra ngoài vùng phủ sóng beacon, nên có thể đọc lại sau khi rời khu trưng bày.",
+  "helpQ10": "Có bắt buộc đăng nhập mới dùng được không?",
+  "helpA10": "Không. Khách tham quan xem được toàn bộ hiện vật, bản đồ, thuyết minh và nhận thông báo mà không cần tài khoản.",
+  "helpQ11": "Vậy đăng nhập để làm gì?",
+  "helpA11": "Để lưu danh sách hiện vật yêu thích và đồng bộ dữ liệu của bạn giữa các thiết bị. Lịch sử tham quan thì vẫn được lưu trên máy ngay cả khi bạn chưa đăng nhập.",
+  "helpQ12": "Đăng nhập và đăng ký ở đâu?",
+  "helpA12": "Vào Tài khoản của tôi, dùng hai nút \"Đăng nhập\" và \"Đăng ký\" ở đầu trang. Sidebar cũng có lối vào tương tự.",
+  "helpQ13": "Bản đồ trống, không thấy gì cả?",
+  "helpA13": "Bản đồ cần kết nối mạng để tải nền. Hãy kiểm tra Wi-Fi hoặc dữ liệu di động. Các ghim hiện vật vẫn hiện đúng vị trí dù nền bản đồ chưa tải xong.",
+  "helpQ14": "Vì sao app xin quyền vị trí?",
+  "helpA14": "Chỉ để hiển thị chấm vị trí của bạn trên bản đồ khu di tích, giúp bạn biết mình đang ở đâu so với các hiện vật. Từ chối quyền này thì bản đồ và ghim hiện vật vẫn dùng bình thường.",
+  "helpQ15": "Lọc hiện vật theo khu trưng bày được không?",
+  "helpA15": "Được. Ở tab Bản đồ có dải nút chọn khu vực phía trên; chọn một khu thì bản đồ chỉ hiện ghim của khu đó.",
+  "helpQ16": "Xem lại thông báo đã nhận ở đâu?",
+  "helpA16": "Bấm nút hình chuông ở góc trên bên phải trang Khám phá. Con số đỏ trên chuông là số thông báo chưa đọc.",
+  "helpQ17": "Tôi muốn đánh giá một hiện vật hoặc góp ý về khu di tích.",
+  "helpA17": "Với từng hiện vật: mở trang chi tiết rồi vào tab \"Đánh giá\". Với góp ý chung về khu di tích: vào Tài khoản của tôi → Đánh giá khu di tích.",
+  "helpTitle": "Trợ giúp & FAQ",
+  "helpStillStuck": "Vẫn chưa tìm được câu trả lời?",
+  "helpContactText": "Liên hệ ban quản lý khu di tích, hoặc gửi phản hồi trực tiếp trong ứng dụng.",
+  "helpEmailCopied": "Đã sao chép email hỗ trợ",
+  "helpPhoneCopied": "Đã sao chép số hỗ trợ",
+  "completePhoneTitle": "Thêm số điện thoại",
+  "completePhoneSubtitle": "Tài khoản Google chưa có số điện thoại. Vui lòng nhập số điện thoại để hoàn tất đăng nhập.",
+  "completePhoneSubmit": "Hoàn tất",
+  "completePhoneUseOtherAccount": "Dùng tài khoản khác"
+}

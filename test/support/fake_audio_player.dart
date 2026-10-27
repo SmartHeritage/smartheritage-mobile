@@ -120,6 +120,13 @@ class FakeAudioPlayer implements AudioPlayer {
     _positionController.add(value);
   }
 
+  /// Giả lập phát tới hết bài, như just_audio báo `completed`.
+  void emitCompleted() {
+    _playing = false;
+    _position = _duration ?? Duration.zero;
+    _stateController.add(PlayerState(false, ProcessingState.completed));
+  }
+
   void _emitState() => _stateController.add(
         PlayerState(_playing, ProcessingState.ready),
       );

@@ -6,6 +6,13 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- Ngôn ngữ giao diện app có bản dịch (lib/l10n/app_*.arb) — iOS cần danh
+	     sách này để chữ hệ thống (menu Sao chép/Dán…) đổi theo ngôn ngữ app. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>vi</string>
+		<string>en</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Ứng dụng cần vị trí của bạn để nhận tín hiệu iBeacon cạnh hiện vật (tự mở giới thiệu và thuyết minh), hiển thị bạn trên bản đồ khu di tích và tính khoảng cách tới các hiện vật.</string>
 	<!-- dchs_flutter_beacon đọc trạng thái Bluetooth qua CoreBluetooth; thiếu
@@ -84,5 +91,19 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- Đăng nhập Google: trang đăng nhập trả kết quả về app qua scheme này
+	     (REVERSED_CLIENT_ID trong GoogleService-Info.plist — tải lại plist
+	     từ Firebase thì phải sửa theo). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.513399865384-mfc7fm3ate0kolvtd7teu55fnp95dkge</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

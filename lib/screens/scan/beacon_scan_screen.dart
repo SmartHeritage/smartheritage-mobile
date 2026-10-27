@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/beacon_scan_toggle.dart';
@@ -62,7 +63,7 @@ class _BeaconScanScreenState extends State<BeaconScanScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Quét beacon')),
+      appBar: AppBar(title: Text(context.l10n.scanBeaconTitle)),
       body: ListenableBuilder(
         listenable: _scan,
         builder: (context, _) {
@@ -84,9 +85,11 @@ class _BeaconScanScreenState extends State<BeaconScanScreen>
                   Text(
                     scanning
                         ? (zone == null
-                              ? 'Đang dò beacon quanh bạn…'
-                              : 'Bạn đang ở khu vực ${zone.name ?? 'beacon'}')
-                        : 'Chạm để bắt đầu quét',
+                              ? context.l10n.beaconSearching
+                              : context.l10n.mapYouAreInZone(
+                                  zone.name ?? 'beacon',
+                                ))
+                        : context.l10n.beaconTapToStart,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 19,
@@ -98,11 +101,8 @@ class _BeaconScanScreenState extends State<BeaconScanScreen>
                   Text(
                     error ??
                         (scanning
-                            ? 'Hãy đứng gần hiện vật. Bắt được beacon là app '
-                                  'tự giới thiệu hiện vật đó — bạn có thể rời '
-                                  'trang này, app vẫn quét tiếp.'
-                            : 'App dùng Bluetooth để nhận tín hiệu beacon đặt '
-                                  'cạnh hiện vật.'),
+                            ? context.l10n.beaconScanningHint
+                            : context.l10n.beaconIdleHint),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -117,7 +117,7 @@ class _BeaconScanScreenState extends State<BeaconScanScreen>
                     TextButton.icon(
                       onPressed: () => toggleBeaconScan(context),
                       icon: const Icon(Icons.bluetooth_disabled),
-                      label: const Text('Tắt quét'),
+                      label: Text(context.l10n.beaconStop),
                     ),
                   const SizedBox(height: 16),
                 ],
@@ -173,7 +173,9 @@ class _PulseButton extends StatelessWidget {
             ),
           Semantics(
             button: true,
-            label: active ? 'Tắt quét beacon' : 'Bật quét beacon',
+            label: active
+                ? context.l10n.beaconTurnOff
+                : context.l10n.beaconTurnOn,
             excludeSemantics: true,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),

@@ -9,12 +9,14 @@ import 'package:smartheritage/config.dart';
 import 'package:smartheritage/data/artifact_repository.dart';
 import 'package:smartheritage/data/beacon_repository.dart';
 import 'package:smartheritage/data/crowd_repository.dart';
+import 'package:smartheritage/screens/auth/login_screen.dart';
 import 'package:smartheritage/screens/map/area_attractions_screen.dart';
 import 'package:smartheritage/screens/map/attraction_map_screen.dart';
 import 'package:smartheritage/screens/map/floor_plan_screen.dart';
 import 'package:smartheritage/screens/map/floor_screen.dart';
 import 'package:smartheritage/screens/map/map_screen.dart';
 import 'package:smartheritage/services/api_client.dart';
+import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/state/beacon_scan_state.dart';
 import 'package:smartheritage/widgets/heritage_map.dart';
 
@@ -185,9 +187,12 @@ void main() {
       BeaconRepository.instance = BeaconRepository(api: _api());
       ArtifactRepository.instance = ArtifactRepository(api: _api());
       CrowdRepository.instance = CrowdRepository(api: _api());
+      // Xem khu vực phải đăng nhập; trường hợp khách có test riêng.
+      AuthController.instance.setTestSession();
     });
 
     tearDown(() {
+      AuthController.instance.resetForTest();
       scan.stopScan();
       ArtifactRepository.instance = original;
       CrowdRepository.instance = originalCrowd;
@@ -198,6 +203,28 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: MapScreen()));
       await tester.pumpAndSettle();
     }
+
+    testWidgets('khách bấm Xem các khu vực thì phải đăng nhập trước',
+        (tester) async {
+      AuthController.instance.resetForTest();
+      await openTab(tester);
+      await tester.tap(find.text('Hoàng thành'));
+      await tester.pumpAndSettle();
+      // Thẻ giới thiệu địa điểm vẫn xem được.
+      expect(find.text('1 khu vực · 1 hiện vật'), findsOneWidget);
+
+      await tester.tap(find.text('Xem các khu vực'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(AreaAttractionsScreen), findsNothing);
+
+      // Huỷ đăng nhập thì về lại bản đồ, không vào danh sách khu vực.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.byType(AreaAttractionsScreen), findsNothing);
+      expect(find.text('Xem các khu vực'), findsOneWidget);
+    });
 
     /// Danh sách khu vực của một địa điểm (mở từ ghim trên tab Bản đồ).
     Future<void> open(WidgetTester tester, [String areaId = 'hue']) async {

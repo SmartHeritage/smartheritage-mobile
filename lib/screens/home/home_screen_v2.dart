@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
 import '../../data/news_repository.dart';
+import '../../l10n/l10n.dart';
 import '../../state/audio_player_state.dart';
 import '../../state/auth_state.dart';
 import '../../state/beacon_scan_state.dart';
+import '../../state/news_inbox_state.dart';
+import '../../state/language_state.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
+import '../../widgets/beacon_choice_sheet.dart';
 import '../artifact/artifact_detail_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../help/help_screen.dart';
 import '../history/history_screen.dart';
 import '../map/map_screen.dart';
+import '../about/about_screen.dart';
 import '../news/news_detail_screen.dart';
 import '../profile/language_screen.dart';
 import '../profile/profile_screen.dart';
@@ -26,8 +32,8 @@ import 'home_screen.dart' show BeaconDetectedSheet;
 ///
 /// Ban đầu bản này bỏ bottom nav giống Metro (lưới 8 ô là điều hướng duy
 /// nhất); từ 2026-10-19 V2 cũng có thanh điều hướng kính mờ như V1 theo yêu
-/// cầu, nên ba ô Bản đồ / Yêu thích / Tài khoản chuyển tab ([onOpenTab]) thay
-/// vì push thành route.
+/// cầu. Ô trong lưới đều push thành route: từ 2026-10-21 các tab là Danh sách
+/// nghe, Thông báo, Tài khoản (chỉ xem), còn ô Cài đặt mở trang cá nhân cũ.
 ///
 /// Khác Metro một điểm: lưới chỉ có MỘT trang. Metro chia 2 trang và nhét
 /// Bản đồ, Tour ảo, Sự kiện xuống trang 2 — gần như không ai vuốt tới. Tám ô
@@ -38,12 +44,7 @@ import 'home_screen.dart' show BeaconDetectedSheet;
 ///
 /// Bật bằng: flutter run --dart-define=HOME_V2=true
 class HomeScreenV2 extends StatefulWidget {
-  const HomeScreenV2({super.key, this.onOpenTab});
-
-  /// Chuyển sang tab của MainShell (1 Bản đồ, 2 Yêu thích, 3 Cá nhân). Ba ô
-  /// tương ứng trong lưới dùng nó để khỏi mở thêm một bản sao của tab thành
-  /// route; `null` (test, nhúng riêng) thì vẫn push như trước.
-  final ValueChanged<int>? onOpenTab;
+  const HomeScreenV2({super.key});
 
   @override
   State<HomeScreenV2> createState() => _HomeScreenV2State();
@@ -65,16 +66,43 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
     super.dispose();
   }
 
-  /// Giữ nguyên hành vi của bản gốc: beacon bắt được hiện vật thì tự phát
-  /// thuyết minh rồi mở sheet.
+  /// Beacon chỉ một hiện vật: như bản gốc, tự phát thuyết minh rồi mở sheet.
+  /// Beacon nhiều hiện vật: hiện danh sách, đợi khách chọn rồi mới làm như
+  /// trên với hiện vật được chọn.
   void _onScanChanged() {
     final artifact = _scan.detected;
     if (artifact == null || _sheetShown || !mounted) return;
+    final choices = _scan.detectedChoices;
     _scan.consumeDetection();
-    if (artifact.hasAudio) {
+    if (choices.length > 1) {
+      _showChoiceSheet(choices);
+      return;
+    }
+    _announce(artifact);
+  }
+
+  void _announce(Artifact artifact) {
+    // Khách chưa đăng nhập thì không tự phát — sheet mời đăng nhập để nghe.
+    if (artifact.hasAudio && AuthController.instance.isLoggedIn) {
       AudioPlayerController.instance.play(artifact);
     }
     _showBeaconSheet(artifact);
+  }
+
+  Future<void> _showChoiceSheet(List<Artifact> choices) async {
+    _sheetShown = true;
+    final picked = await showModalBottomSheet<Artifact>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => BeaconChoiceSheet(artifacts: choices),
+    );
+    _sheetShown = false;
+    if (picked == null || !mounted) return;
+    _scan.reportChoice(picked);
+    _announce(picked);
   }
 
   void _showBeaconSheet(Artifact artifact) {
@@ -102,53 +130,39 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
   }
 
   Widget _buildBody(BuildContext context) {
-    // Nền chuyển dọc: phớt nâu đỏ ở đỉnh, trắng dần xuống đáy — thủ pháp của
-    // app Metro, giúp các card trắng (hero, icon tròn, thẻ hiện vật) nổi lên
-    // mà không cần viền.
-    //
-    // stops [0, 1] để chuyển trải đều cả trang. Để stop kết thúc sớm (0.45
-    // như bản đầu) thì nửa dưới là một mảng trắng phẳng, nhìn thành hai khối
-    // màu rời nhau chứ không phải một dải liền.
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.surfaceTint, AppColors.background],
-          stops: [0, 1],
-        ),
-      ),
-      // Không chừa lề dưới ở SafeArea: danh sách chạy xuống sau thanh điều
-      // hướng kính mờ, lề cuối đã cộng chiều cao thanh.
-      child: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () => Future.wait([
-            ArtifactRepository.instance.refresh(),
-            NewsRepository.instance.refresh(),
-          ]),
-          child: ListView(
-            padding: EdgeInsets.only(
-              bottom: 28 + MediaQuery.paddingOf(context).bottom,
-            ),
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              _pad(_buildTopBar(context)),
-              if (ArtifactRepository.instance.isOffline) ...[
-                const SizedBox(height: 12),
-                _pad(_buildOfflineBanner()),
-              ],
-              const SizedBox(height: 16),
-              _pad(const _HeroCard()),
-              const SizedBox(height: 22),
-              _pad(_buildFeatureGrid(context)),
-              const SizedBox(height: 26),
-              _buildRecentVisits(),
-              _buildFeaturedCarousel(),
-              _buildNewsCarousel(),
-            ],
+    // Nền là ảnh minh hoạ chung của các tab V2, vẽ ở MainShell (2026-10-21) —
+    // trước đây là gradient phớt nâu đỏ → trắng vẽ ngay tại đây, giờ để trong
+    // suốt cho ảnh lộ ra.
+    // Không chừa lề dưới ở SafeArea: danh sách chạy xuống sau thanh điều
+    // hướng, lề cuối đã cộng chiều cao thanh.
+    return SafeArea(
+      bottom: false,
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () => Future.wait([
+          ArtifactRepository.instance.refresh(),
+          NewsRepository.instance.refresh(),
+        ]),
+        child: ListView(
+          padding: EdgeInsets.only(
+            bottom: 28 + MediaQuery.paddingOf(context).bottom,
           ),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            _pad(_buildTopBar(context)),
+            if (ArtifactRepository.instance.isOffline) ...[
+              const SizedBox(height: 12),
+              _pad(_buildOfflineBanner()),
+            ],
+            const SizedBox(height: 16),
+            _pad(const _HeroCard()),
+            const SizedBox(height: 22),
+            _pad(_buildFeatureGrid(context)),
+            const SizedBox(height: 26),
+            _buildRecentVisits(),
+            _buildFeaturedCarousel(),
+            _buildNewsCarousel(),
+          ],
         ),
       ),
     );
@@ -160,36 +174,46 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
     child: child,
   );
 
-  /// Hàng trên cùng: tiêu đề "Trang chủ" bên trái, nút chọn ngôn ngữ bên phải.
+  /// Hàng trên cùng: tiêu đề bên trái, nút chọn ngôn ngữ bên phải. Đã đăng nhập
+  /// thì tiêu đề là lời chào kèm họ tên tài khoản thay cho "Trang chủ".
   ///
   /// Không có nút menu vì bản này bỏ sidebar, và không có chuông vì bỏ luôn
   /// màn hình thông báo. Mọi lối đi đều nằm trong lưới tính năng.
   Widget _buildTopBar(BuildContext context) {
     return Row(
       children: [
-        const Text(
-          'Trang chủ',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+        // Tên dài thì cắt bằng "…" chứ không đẩy chip ngôn ngữ ra khỏi màn.
+        Expanded(
+          child: ListenableBuilder(
+            listenable: AuthController.instance,
+            builder: (context, _) {
+              final auth = AuthController.instance;
+              final user = auth.isLoggedIn ? auth.user : null;
+              return Text(
+                // Chưa nhập họ tên thì displayName lấy phần trước @ của email.
+                user == null
+                    ? context.l10n.navHome
+                    : context.l10n.homeGreeting(user.displayName),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              );
+            },
           ),
         ),
-        // Chip nằm trong Expanded căn phải, không dùng Spacer: nếu để Spacer
-        // và chip cùng là flex child thì hai đứa chia đôi khoảng trống và chip
-        // bị cắt chữ dù còn thừa chỗ.
-        Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Flexible(
-                child: _LanguageChip(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LanguageScreen()),
-                  ),
-                ),
-              ),
-            ],
+        const SizedBox(width: 12),
+        // Chip có chữ co giãn (Flexible) bên trong nên cần bề ngang có giới hạn;
+        // không bọc Flexible ở đây vì sẽ chia đôi chỗ với tiêu đề.
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 170),
+          child: _LanguageChip(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LanguageScreen()),
+            ),
           ),
         ),
       ],
@@ -198,15 +222,11 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
 
   /// Lưới 8 tính năng, điều hướng chính của màn hình.
   ///
-  /// Xếp 2 hàng 4 ô trên một trang duy nhất. Bản đồ, Yêu thích, Tài khoản
-  /// trùng với tab ở thanh dưới nên chuyển tab, không mở thêm một bản.
+  /// Xếp 2 hàng 4 ô trên một trang duy nhất. Tài khoản trùng với tab ở thanh
+  /// dưới nên chuyển tab, không mở thêm một bản.
   Widget _buildFeatureGrid(BuildContext context) {
     void push(Widget screen) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
-    void openTab(int tab, Widget screen) {
-      final onOpenTab = widget.onOpenTab;
-      onOpenTab == null ? push(screen) : onOpenTab(tab);
-    }
 
     return ListenableBuilder(
       listenable: _scan,
@@ -214,48 +234,70 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
         final items = <_Feature>[
           _Feature(
             icon: Icons.map_outlined,
-            label: 'Bản đồ',
-            onTap: () => openTab(1, const MapScreen()),
+            label: context.l10n.navMap,
+            onTap: () => push(const MapScreen()),
           ),
           _Feature(
             icon: _scan.isScanning
                 ? Icons.bluetooth_searching
                 : Icons.bluetooth,
-            label: _scan.isScanning ? 'Đang quét' : 'Quét beacon',
+            label: _scan.isScanning
+                ? context.l10n.homeScanning
+                : context.l10n.scanBeaconTitle,
             active: _scan.isScanning,
             // Sang trang quét riêng (nút Bluetooth lớn), giống lựa chọn
             // "Quét beacon" ở nút quét giữa thanh điều hướng.
-            onTap: () => push(const BeaconScanScreen()),
+            // Quét beacon phải đăng nhập — hỏi trước khi sang trang quét.
+            onTap: () async {
+              if (await AuthController.ensureLoggedIn(context)) {
+                push(const BeaconScanScreen());
+              }
+            },
           ),
           _Feature(
             icon: Icons.favorite_border,
-            label: 'Yêu thích',
-            onTap: () => openTab(2, const FavoritesScreen()),
+            label: context.l10n.navFavorites,
+            // Tab thứ ba giờ là Thông báo (2026-10-21) → Yêu thích mở thành
+            // trang riêng.
+            onTap: () => push(const FavoritesScreen()),
           ),
+          // Thay ô "Đang nghe" (2026-10-21): bài đang phát đã có mini-player
+          // ngay trên thanh điều hướng.
           _Feature(
-            icon: Icons.headphones_outlined,
-            label: 'Đang nghe',
-            onTap: () => _openCurrentAudio(context),
+            icon: Icons.info_outline,
+            label: context.l10n.homeAbout,
+            onTap: () => push(const AboutScreen()),
           ),
           _Feature(
             icon: Icons.history,
-            label: 'Lịch sử',
+            label: context.l10n.homeHistory,
             onTap: () => push(const HistoryScreen()),
           ),
           _Feature(
             icon: Icons.rate_review_outlined,
-            label: 'Góp ý',
+            label: context.l10n.homeFeedback,
             onTap: () => push(const FeedbackScreen()),
           ),
           _Feature(
             icon: Icons.help_outline,
-            label: 'Trợ giúp',
+            label: context.l10n.homeHelp,
             onTap: () => push(const HelpScreen()),
           ),
+          // Thay ô Tài khoản (2026-10-21): tab Tài khoản giờ chỉ xem thông
+          // tin, các thiết lập (sửa thông tin, ngôn ngữ, quét, đăng xuất…)
+          // nằm ở trang cá nhân cũ mở từ đây. Khách vẫn vào được — trang tự
+          // hiện thẻ mời đăng nhập.
           _Feature(
-            icon: Icons.person_outline,
-            label: 'Tài khoản',
-            onTap: () => _openAccount(context),
+            icon: Icons.settings_outlined,
+            label: context.l10n.settingsTitle,
+            onTap: () => push(
+              ProfileScreen(
+                title: context.l10n.settingsTitle,
+                showEditProfile: false,
+                linkAbout: true,
+                showAccountCard: false,
+              ),
+            ),
           ),
         ];
 
@@ -290,47 +332,6 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
     );
   }
 
-  /// Ô "Tài khoản": khách chưa đăng nhập thì đưa thẳng vào trang đăng nhập,
-  /// đăng nhập rồi mới vào trang cá nhân.
-  ///
-  /// Trang cá nhân vốn tự xử lý được trạng thái khách (hiện card mời đăng
-  /// nhập), nhưng như vậy khách phải bấm thêm một nhịp nữa mới tới được form.
-  Future<void> _openAccount(BuildContext context) async {
-    final navigator = Navigator.of(context);
-    if (!AuthController.instance.isLoggedIn) {
-      // Huỷ giữa chừng (bấm back ở trang đăng nhập) thì dừng, không mở tiếp
-      // trang cá nhân rỗng.
-      final loggedIn = await AuthController.ensureLoggedIn(context);
-      if (!loggedIn || !mounted) return;
-    }
-    final onOpenTab = widget.onOpenTab;
-    if (onOpenTab != null) {
-      onOpenTab(3);
-      return;
-    }
-    navigator.push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
-  }
-
-  /// Mở trình phát của hiện vật đang nghe. Chưa phát gì thì nói thẳng thay vì
-  /// mở một màn hình trống.
-  void _openCurrentAudio(BuildContext context) {
-    final artifact = AudioPlayerController.instance.artifact;
-    if (artifact == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chưa có bản thuyết minh nào đang phát.'),
-          backgroundColor: AppColors.textSecondary,
-        ),
-      );
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ArtifactDetailScreen(artifact: artifact),
-      ),
-    );
-  }
-
   /// Carousel ngang — đúng chỗ Metro đặt banner khuyến mãi. Ở đây dùng dữ
   /// liệu thật (hiện vật nổi bật) thay vì banner quảng cáo.
   Widget _buildFeaturedCarousel() {
@@ -339,7 +340,7 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _pad(const SectionHeader(title: 'Nổi bật')),
+        _pad(SectionHeader(title: context.l10n.homeFeatured)),
         const SizedBox(height: 12),
         SizedBox(
           height: 252,
@@ -365,7 +366,7 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _pad(const SectionHeader(title: 'Tin tức')),
+        _pad(SectionHeader(title: context.l10n.homeNews)),
         const SizedBox(height: 12),
         SizedBox(
           height: 180,
@@ -393,7 +394,7 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
           children: [
             _pad(
               SectionHeader(
-                title: 'Tham quan gần đây',
+                title: context.l10n.homeRecentVisits,
                 onSeeAll: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const HistoryScreen()),
                 ),
@@ -428,9 +429,9 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
         children: [
           const Icon(Icons.cloud_off, size: 18, color: AppColors.textSecondary),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Chưa kết nối được máy chủ — đang xem dữ liệu sẵn có.',
+              context.l10n.homeOffline,
               style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
             ),
           ),
@@ -441,7 +442,10 @@ class _HomeScreenV2State extends State<HomeScreenV2> {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Thử lại', style: TextStyle(fontSize: 12.5)),
+            child: Text(
+              context.l10n.retry,
+              style: const TextStyle(fontSize: 12.5),
+            ),
           ),
         ],
       ),
@@ -505,9 +509,9 @@ class _HeroCard extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                'Ứng dụng chính thức',
-                style: TextStyle(
+              child: Text(
+                context.l10n.homeOfficialApp,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -532,7 +536,7 @@ class _HeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Đến gần hiện vật, thuyết minh tự phát',
+                  context.l10n.homeHeroSubtitle,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.88),
                     fontSize: 13,
@@ -566,7 +570,11 @@ class _Feature {
 }
 
 /// Icon tròn nền trắng + nhãn dưới — hình dáng lấy từ lưới icon của Metro.
-class _QuickAction extends StatelessWidget {
+/// Một ô của lưới tính năng. Bấm vào: vòng tròn icon nhún nhỏ lại khi đang
+/// nhấn rồi bật lại khi thả, kèm một nhịp rung nhẹ (2026-10-21). Không dùng
+/// InkWell: vệt loang của nó vẽ dưới vòng tròn trắng nên chỉ lộ một quầng xám
+/// quanh mép ô, trên ảnh nền gần như không thấy.
+class _QuickAction extends StatefulWidget {
   const _QuickAction({
     required this.icon,
     required this.label,
@@ -580,40 +588,67 @@ class _QuickAction extends StatelessWidget {
   final bool active;
 
   @override
+  State<_QuickAction> createState() => _QuickActionState();
+}
+
+class _QuickActionState extends State<_QuickAction> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: active ? AppColors.primary : Colors.white,
-                shape: BoxShape.circle,
+    final active = widget.active;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        // Bấm cả vùng ô (kể cả chữ, khoảng trống), không chỉ vòng tròn.
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          widget.onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: [
+              AnimatedScale(
+                scale: _pressed ? 0.9 : 1,
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: active ? AppColors.primary : Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    size: 24,
+                    color: active ? Colors.white : AppColors.primary,
+                  ),
+                ),
               ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: active ? Colors.white : AppColors.primary,
+              const SizedBox(height: 8),
+              Text(
+                widget.label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  height: 1.25,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11.5,
-                height: 1.25,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -630,11 +665,7 @@ class _FeaturedSlide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ArtifactDetailScreen(artifact: artifact),
-        ),
-      ),
+      onTap: () => openArtifactDetail(context, artifact),
       child: Container(
         width: 280,
         decoration: BoxDecoration(
@@ -773,9 +804,13 @@ class _NewsSlide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => NewsDetailScreen(item: item))),
+      onTap: () {
+        // Đọc từ trang chủ cũng tính là đã đọc ở tab Thông báo.
+        NewsInboxController.instance.markRead(item);
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => NewsDetailScreen(item: item)));
+      },
       child: Container(
         width: 200,
         decoration: BoxDecoration(
@@ -861,24 +896,31 @@ class _LanguageChip extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.language, size: 18, color: AppColors.primary),
-            SizedBox(width: 6),
+            const Icon(Icons.language, size: 18, color: AppColors.primary),
+            const SizedBox(width: 6),
             Flexible(
-              child: Text(
-                'Tiếng Việt',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+              // Ngôn ngữ đang chọn (trước đây ghi cứng "Tiếng Việt").
+              child: ListenableBuilder(
+                listenable: LanguageController.instance,
+                builder: (context, _) {
+                  final code = LanguageController.instance.code;
+                  return Text(
+                    LanguageController.nativeName(code),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  );
+                },
               ),
             ),
-            Icon(
+            const Icon(
               Icons.keyboard_arrow_down,
               size: 18,
               color: AppColors.textSecondary,

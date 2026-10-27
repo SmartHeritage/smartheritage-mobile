@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/attraction.dart';
+import '../../l10n/l10n.dart';
+import '../../state/auth_state.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/heritage_map.dart';
@@ -57,8 +59,12 @@ class _MapScreenState extends State<MapScreen> {
   int _attractionCount(TourismArea area) =>
       _repo.attractions.where((a) => a.tourismAreaId == area.id).length;
 
-  void _open(TourismArea area) {
-    Navigator.of(context).push(MaterialPageRoute(
+  /// Xem khu vực của một địa điểm phải đăng nhập (2026-10-21), như trang chi
+  /// tiết hiện vật. Khách vẫn xem được bản đồ và thẻ giới thiệu địa điểm.
+  Future<void> _open(TourismArea area) async {
+    final navigator = Navigator.of(context);
+    if (!await AuthController.ensureLoggedIn(context)) return;
+    navigator.push(MaterialPageRoute(
       builder: (_) => AreaAttractionsScreen(area: area),
     ));
   }
@@ -103,11 +109,11 @@ class _MapScreenState extends State<MapScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.symmetric(vertical: 12),
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 child: Text(
-                  'Địa điểm tham quan',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  context.l10n.mapPlacesTitle,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
               for (final area in _repo.tourismAreas)
@@ -129,10 +135,11 @@ class _MapScreenState extends State<MapScreen> {
 
   String _subtitle(TourismArea area) {
     final count = _attractionCount(area);
+    final l10n = context.l10n;
     final parts = [
-      count == 0 ? 'Chưa có khu vực' : '$count khu vực',
-      '${_repo.artifactsInArea(area.id).length} hiện vật',
-      if (!area.isPinned) 'chưa có vị trí trên bản đồ',
+      l10n.mapAreaCount(count),
+      l10n.mapArtifactCount(_repo.artifactsInArea(area.id).length),
+      if (!area.isPinned) l10n.mapNotPinned,
     ];
     return parts.join(' · ');
   }
@@ -158,7 +165,8 @@ class _MapScreenState extends State<MapScreen> {
         if (a.isPinned) a,
     ];
     final hereId = _hereAreaId;
-    // Thanh điều hướng kính mờ nổi đè lên đáy màn (MainShell bật extendBody).
+    // Thanh dưới (mini-player + thanh điều hướng) nằm đè lên đáy màn vì
+    // MainShell bật extendBody — thẻ nổi phải chừa phần này.
     final navInset = MediaQuery.paddingOf(context).bottom;
     TourismArea? selected;
     TourismArea? here;
@@ -170,7 +178,7 @@ class _MapScreenState extends State<MapScreen> {
     if (pinned.isEmpty) {
       // Không có bản đồ để xem — danh sách thường, giữ thanh tiêu đề.
       return Scaffold(
-        appBar: AppBar(title: const Text('Bản đồ tham quan')),
+        appBar: AppBar(title: Text(context.l10n.mapScreenTitle)),
         body: _UnpinnedList(
           areas: areas,
           subtitle: _subtitle,
@@ -234,6 +242,17 @@ class _MapScreenState extends State<MapScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Bản đồ không có thanh tiêu đề; mở thành trang riêng (ô Bản
+                  // đồ ở trang chủ) thì cần nút quay lại.
+                  if (Navigator.canPop(context)) ...[
+                    MapIconButton(
+                      icon: Icons.arrow_back,
+                      tooltip: MaterialLocalizations.of(context)
+                          .backButtonTooltip,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   // "Bạn đang ở …" — bấm để đưa bản đồ về địa điểm đó.
                   Expanded(
                     child: Align(
@@ -244,7 +263,7 @@ class _MapScreenState extends State<MapScreen> {
                           // Canh giữa với nút tròn 40 bên phải.
                           padding: const EdgeInsets.only(top: 2),
                           child: _HereChip(
-                            text: 'Bạn đang ở ${here.name}',
+                            text: context.l10n.mapYouAreAt(here.name),
                             onTap: () => _select(here),
                           ),
                         ),
@@ -259,7 +278,7 @@ class _MapScreenState extends State<MapScreen> {
                     children: [
                       MapIconButton(
                         icon: Icons.format_list_bulleted,
-                        tooltip: 'Danh sách địa điểm',
+                        tooltip: context.l10n.mapPlacesList,
                         onPressed: () => _showList(hereId),
                       ),
                       if (_movedAway) ...[
@@ -316,12 +335,11 @@ class _UnpinnedList extends StatelessWidget {
           bottom: 12 + MediaQuery.paddingOf(context).bottom,
         ),
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Text(
-              'Chưa có địa điểm nào được đặt vị trí trên bản đồ. Chọn một '
-              'địa điểm để xem các khu vực.',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              context.l10n.mapNoPinnedPlaces,
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ),
           for (final area in areas)
@@ -361,7 +379,9 @@ class _AreaTile extends StatelessWidget {
             )
           : _AreaImage(url: image, size: 44, radius: 10),
       title: Text(area.name),
-      subtitle: Text(isHere ? 'Bạn đang ở đây · $subtitle' : subtitle),
+      subtitle: Text(
+        isHere ? context.l10n.mapYouAreHereWith(subtitle) : subtitle,
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
@@ -514,7 +534,7 @@ class _AreaCard extends StatelessWidget {
                       : Colors.black.withValues(alpha: 0.35),
                   shape: const CircleBorder(),
                   child: IconButton(
-                    tooltip: 'Đóng',
+                    tooltip: context.l10n.close,
                     onPressed: onClose,
                     icon: Icon(
                       Icons.close,
@@ -576,7 +596,7 @@ class _AreaCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 4),
                 Text(
-                  isHere ? 'Bạn đang ở đây · $subtitle' : subtitle,
+                  isHere ? context.l10n.mapYouAreHereWith(subtitle) : subtitle,
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: isHere ? FontWeight.w600 : FontWeight.normal,
@@ -604,9 +624,9 @@ class _AreaCard extends StatelessWidget {
                     minimumSize: const Size.fromHeight(44),
                   ),
                   icon: const Icon(Icons.map_outlined, size: 19),
-                  label: const Text(
-                    'Xem các khu vực',
-                    style: TextStyle(fontSize: 14),
+                  label: Text(
+                    context.l10n.mapViewAreas,
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
               ],

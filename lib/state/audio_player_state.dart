@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../data/mock_data.dart';
+import '../l10n/l10n.dart';
 
 /// Trạng thái phát thuyết minh dùng chung toàn app.
 ///
@@ -17,10 +18,15 @@ class AudioPlayerController extends ChangeNotifier {
   AudioPlayerController({AudioPlayer? player})
       : _player = player ?? AudioPlayer() {
     _sub = _player.playerStateStream.listen((state) {
-      // Hết bài thì quay về đầu và dừng, giống hành vi cũ.
       if (state.processingState == ProcessingState.completed) {
-        _player.pause();
-        _player.seek(Duration.zero);
+        // Đang nghe theo danh sách thì sang bài kế như app nhạc; hết danh sách
+        // (hoặc nghe lẻ một hiện vật) thì quay về đầu và dừng như cũ.
+        if (hasNext) {
+          next();
+        } else {
+          _player.pause();
+          _player.seek(Duration.zero);
+        }
       }
       notifyListeners();
     });
@@ -47,6 +53,20 @@ class AudioPlayerController extends ChangeNotifier {
   StreamSubscription<Duration?>? _durSub;
 
   Artifact? artifact;
+
+  /// Danh sách đang nghe lần lượt (tab Danh sách nghe). Rỗng = nghe lẻ một
+  /// hiện vật, hết bài thì dừng.
+  List<Artifact> queue = const [];
+
+  int get _queueIndex =>
+      queue.indexWhere((a) => a.id == artifact?.id);
+
+  bool get hasNext {
+    final i = _queueIndex;
+    return i >= 0 && i < queue.length - 1;
+  }
+
+  bool get hasPrevious => _queueIndex > 0;
 
   /// Đang tải file về trước khi phát được.
   bool isLoading = false;
@@ -91,9 +111,41 @@ class AudioPlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Nghe lần lượt [items] bắt đầu từ bài thứ [index]. Bỏ sẵn các hiện vật
+  /// chưa có bản thu để tự chuyển bài không vấp vào bài câm.
+  Future<void> playQueue(List<Artifact> items, int index) {
+    final start = items[index];
+    queue = [
+      for (final a in items)
+        if (a.hasAudio) a,
+    ];
+    return play(start);
+  }
+
+  Future<void> next() async {
+    final i = _queueIndex;
+    if (i < 0 || i >= queue.length - 1) return;
+    await play(queue[i + 1]);
+  }
+
+  /// Giống nút lùi của app nhạc: đã nghe quá vài giây thì về đầu bài, mới
+  /// bắt đầu thì lùi hẳn về bài trước.
+  Future<void> previous() async {
+    final i = _queueIndex;
+    if (i <= 0 || position > const Duration(seconds: 3)) {
+      await _player.seek(Duration.zero);
+      notifyListeners();
+      return;
+    }
+    await play(queue[i - 1]);
+  }
+
   /// Mở bản thu của [next] rồi phát. Cùng hiện vật thì phát tiếp chứ không
   /// tải lại từ đầu.
   Future<void> play(Artifact next) async {
+    // Mở một hiện vật ngoài danh sách (trang chi tiết, beacon) = thôi nghe
+    // theo danh sách, khỏi hết bài lại nhảy sang bài của danh sách cũ.
+    if (!queue.any((a) => a.id == next.id)) queue = const [];
     if (artifact?.id == next.id && _player.audioSource != null) {
       if (error != null) return;
       await _player.play();
@@ -107,7 +159,7 @@ class AudioPlayerController extends ChangeNotifier {
     if (!next.hasAudio) {
       // Không có file thì dừng hẳn — thà nói "chưa có thuyết minh" còn hơn
       // chạy một thanh tiến trình rỗng như bản demo cũ.
-      error = 'Hiện vật này chưa có bản thuyết minh.';
+      error = appStrings.audioNoRecording;
       await _player.stop();
       notifyListeners();
       return;
@@ -124,7 +176,7 @@ class AudioPlayerController extends ChangeNotifier {
       await _player.play();
     } catch (e) {
       isLoading = false;
-      error = 'Không phát được bản thuyết minh.';
+      error = appStrings.audioPlayFailed;
       notifyListeners();
     }
   }
@@ -151,6 +203,7 @@ class AudioPlayerController extends ChangeNotifier {
   void close() {
     _player.stop();
     artifact = null;
+    queue = const [];
     error = null;
     isLoading = false;
     notifyListeners();

@@ -1,18 +1,33 @@
+import '../l10n/l10n.dart';
 import '../services/api_client.dart';
 
-/// Mã tag backend nhận (`REVIEW_TAGS`) kèm nhãn hiển thị.
+/// Mã tag backend nhận (`REVIEW_TAGS`).
 ///
 /// Thứ tự giữ đúng như bên backend để hai đầu đọc cùng một danh sách. Gửi mã
-/// chứ không gửi nhãn: nhãn là tiếng Việt, đổi chữ một cái là thống kê bên
-/// admin gãy.
-const reviewTagLabels = <String, String>{
-  'content_good': 'Nội dung hấp dẫn',
-  'narration_clear': 'Thuyết minh rõ ràng',
-  'wayfinding_easy': 'Dễ tìm vị trí',
-  'images_good': 'Hình ảnh đẹp',
-  'languages_missing': 'Cần thêm ngôn ngữ',
-  'audio_poor': 'Âm thanh chưa tốt',
-};
+/// chứ không gửi nhãn: nhãn đổi theo ngôn ngữ giao diện ([reviewTagLabel]),
+/// gửi nhãn thì thống kê bên admin gãy.
+const reviewTagCodes = [
+  'content_good',
+  'narration_clear',
+  'wayfinding_easy',
+  'images_good',
+  'languages_missing',
+  'audio_poor',
+];
+
+/// Nhãn hiển thị của mã tag theo ngôn ngữ giao diện; mã lạ thì `null`.
+String? reviewTagLabel(String code) {
+  final l10n = appStrings;
+  return switch (code) {
+    'content_good' => l10n.reviewTagContentGood,
+    'narration_clear' => l10n.reviewTagNarrationClear,
+    'wayfinding_easy' => l10n.reviewTagWayfindingEasy,
+    'images_good' => l10n.reviewTagImagesGood,
+    'languages_missing' => l10n.reviewTagLanguagesMissing,
+    'audio_poor' => l10n.reviewTagAudioPoor,
+    _ => null,
+  };
+}
 
 /// Một đánh giá đã được duyệt, từ `GET /reviews`.
 class Review {
@@ -45,7 +60,7 @@ class Review {
   /// Nhãn tiếng Việt của các tag; bỏ qua mã lạ để backend thêm tag mới không
   /// làm vỡ màn hình.
   List<String> get tagLabels =>
-      tags.map((t) => reviewTagLabels[t]).whereType<String>().toList();
+      tags.map(reviewTagLabel).whereType<String>().toList();
 }
 
 /// Đọc và gửi đánh giá.

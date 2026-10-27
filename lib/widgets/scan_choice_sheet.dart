@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../screens/scan/beacon_scan_screen.dart';
 import '../screens/scan/qr_scan_screen.dart';
+import '../state/auth_state.dart';
 import '../state/beacon_scan_state.dart';
 import '../theme/app_theme.dart';
 
 /// Bảng chọn của nút quét giữa thanh điều hướng: quét mã QR hoặc sang trang
 /// quét beacon ([BeaconScanScreen]).
-Future<void> showScanChoiceSheet(BuildContext context) {
+///
+/// Quét QR và quét beacon đều phải đăng nhập (2026-10-21) — hỏi ngay khi bấm
+/// nút quét, khỏi để khách chọn xong mới bị chặn.
+Future<void> showScanChoiceSheet(BuildContext context) async {
+  if (!await AuthController.ensureLoggedIn(context)) return;
+  if (!context.mounted) return;
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.white,
@@ -32,8 +39,8 @@ Future<void> showScanChoiceSheet(BuildContext context) {
               ),
             ),
             const SizedBox(height: 14),
-            const Text(
-              'Nhận diện hiện vật',
+            Text(
+              context.l10n.scanSheetTitle,
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -43,8 +50,8 @@ Future<void> showScanChoiceSheet(BuildContext context) {
             const SizedBox(height: 12),
             _ScanOption(
               icon: Icons.qr_code_scanner,
-              title: 'Quét mã QR',
-              subtitle: 'Quét mã trên bảng giới thiệu cạnh hiện vật',
+              title: context.l10n.scanQrTitle,
+              subtitle: context.l10n.scanQrSubtitle,
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 Navigator.of(
@@ -59,10 +66,10 @@ Future<void> showScanChoiceSheet(BuildContext context) {
                 final scanning = BeaconScanController.instance.isScanning;
                 return _ScanOption(
                   icon: Icons.bluetooth_searching,
-                  title: 'Quét beacon',
+                  title: context.l10n.scanBeaconTitle,
                   subtitle: scanning
-                      ? 'Đang quét — app tự giới thiệu hiện vật khi bạn đến gần'
-                      : 'Tự nhận hiện vật khi bạn đứng gần beacon',
+                      ? context.l10n.scanBeaconActive
+                      : context.l10n.scanBeaconIdle,
                   active: scanning,
                   onTap: () {
                     Navigator.of(sheetContext).pop();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/api_client.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
@@ -35,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (!_agreed) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(errorSnackBar('Vui lòng đồng ý với điều khoản sử dụng'));
+          .showSnackBar(errorSnackBar(context.l10n.agreeTermsRequired));
       return;
     }
     setState(() => _busy = true);
@@ -54,6 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       // Giữ messenger trước khi pop — context này sắp chết theo route.
       final messenger = ScaffoldMessenger.of(context);
+      final success = context.l10n.registerSuccess;
       final navigator = Navigator.of(context);
       if (navigator.canPop()) {
         // Quay về màn trước đó (cổng đăng nhập / hồ sơ), giờ đã đăng nhập.
@@ -67,7 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('Tạo tài khoản thành công')),
+          SnackBar(content: Text(success)),
         );
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -79,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tạo tài khoản')),
+      appBar: AppBar(title: Text(context.l10n.registerTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -89,43 +91,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 12),
-                const Text(
-                  'Bắt đầu hành trình khám phá di sản cùng chúng tôi',
-                  style: TextStyle(fontSize: 14.5, color: AppColors.textSecondary),
+                Text(
+                  context.l10n.registerSubtitle,
+                  style: const TextStyle(fontSize: 14.5, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    hintText: 'Họ và tên',
+                  decoration: InputDecoration(
+                    hintText: context.l10n.fieldFullName,
                     prefixIcon: Icon(Icons.person_outline),
                   ),
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Vui lòng nhập họ tên' : null,
+                      (v == null || v.trim().isEmpty) ? context.l10n.nameRequired : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    hintText: 'Email',
+                  decoration: InputDecoration(
+                    hintText: context.l10n.fieldEmail,
                     prefixIcon: Icon(Icons.mail_outline),
                   ),
                   validator: (v) => (v == null || !v.contains('@'))
-                      ? 'Vui lòng nhập email hợp lệ'
+                      ? context.l10n.invalidEmail
                       : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    hintText: 'Số điện thoại',
+                  decoration: InputDecoration(
+                    hintText: context.l10n.fieldPhone,
                     prefixIcon: Icon(Icons.phone_outlined),
                   ),
                   validator: (v) => (v == null || v.trim().length < 9)
-                      ? 'Số điện thoại không hợp lệ'
+                      ? context.l10n.invalidPhone
                       : null,
                 ),
                 const SizedBox(height: 16),
@@ -133,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   obscureText: _obscure,
                   decoration: InputDecoration(
-                    hintText: 'Mật khẩu',
+                    hintText: context.l10n.fieldPassword,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -145,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   // Khớp MinLength(8) của RegisterDto phía backend.
                   validator: (v) => (v == null || v.length < 8)
-                      ? 'Mật khẩu tối thiểu 8 ký tự'
+                      ? context.l10n.passwordTooShort
                       : null,
                 ),
                 const SizedBox(height: 12),
@@ -155,22 +157,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   activeColor: AppColors.primary,
-                  title: const Text.rich(
+                  title: Text.rich(
                     TextSpan(
-                      text: 'Tôi đồng ý với ',
-                      style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                      text: context.l10n.agreePrefix,
+                      style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
                       children: [
                         TextSpan(
-                          text: 'Điều khoản sử dụng',
-                          style: TextStyle(
+                          text: context.l10n.termsOfUse,
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        TextSpan(text: ' và '),
+                        TextSpan(text: context.l10n.agreeAnd),
                         TextSpan(
-                          text: 'Chính sách bảo mật',
-                          style: TextStyle(
+                          text: context.l10n.privacyPolicy,
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
@@ -191,21 +193,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text('Đăng ký'),
+                      : Text(context.l10n.register),
                 ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'Đã có tài khoản? ',
-                      style: TextStyle(color: AppColors.textSecondary),
+                    Text(
+                      context.l10n.haveAccount,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'Đăng nhập',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.login,
+                        style: const TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                         ),

@@ -43,6 +43,8 @@ void main() {
 
   testWidgets('công tắc quét chỉ còn ở sidebar, không ở trang khám phá',
       (tester) async {
+    // Bật quét phải đăng nhập.
+    AuthController.instance.setTestSession();
     await tester.pumpWidget(_harness());
 
     // Card quét iBeacon đã bỏ khỏi trang khám phá.

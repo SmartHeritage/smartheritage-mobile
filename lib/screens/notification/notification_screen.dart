@@ -52,10 +52,7 @@ class NotificationScreen extends StatelessWidget {
     NotificationController.instance.markRead(item.id);
     final artifactId = item.artifactId;
     if (artifactId == null) return;
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) =>
-          ArtifactDetailScreen(artifact: ArtifactRepository.instance.byId(artifactId)),
-    ));
+    openArtifactDetail(context, ArtifactRepository.instance.byId(artifactId));
   }
 }
 

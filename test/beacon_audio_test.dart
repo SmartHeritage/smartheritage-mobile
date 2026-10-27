@@ -9,6 +9,7 @@ import 'package:smartheritage/data/mock_data.dart';
 import 'package:smartheritage/screens/home/home_screen.dart';
 import 'package:smartheritage/services/api_client.dart';
 import 'package:smartheritage/state/audio_player_state.dart';
+import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/state/beacon_scan_state.dart';
 import 'package:smartheritage/widgets/app_sidebar.dart';
 import 'package:smartheritage/widgets/mini_player_bar.dart';
@@ -102,9 +103,13 @@ void main() {
     audio = AudioPlayerController(player: player);
     AudioPlayerController.instance = audio;
     seedRepository(withAudio: true);
+    // Nghe thuyết minh phải đăng nhập — các test dưới mô tả khách đã đăng
+    // nhập; trường hợp khách có test riêng.
+    AuthController.instance.setTestSession();
   });
 
   tearDown(() {
+    AuthController.instance.resetForTest();
     scan.stopScan();
     audio.close();
     ArtifactRepository.instance.resetForTest();
@@ -125,6 +130,20 @@ void main() {
     expect(player.lastUrl, contains(withAudioId));
     // Sheet beacon hiện kèm trạng thái đang phát.
     expect(find.text('Đang phát thuyết minh âm thanh'), findsOneWidget);
+
+    await _stopAll(tester);
+  });
+
+  testWidgets('khách chưa đăng nhập: không tự phát, sheet mời đăng nhập',
+      (tester) async {
+    AuthController.instance.resetForTest();
+    await tester.pumpWidget(_harness());
+    await _triggerDetection(tester);
+
+    expect(audio.artifact, isNull);
+    expect(player.lastUrl, isNull);
+    expect(find.text('Đăng nhập để nghe thuyết minh'), findsOneWidget);
+    expect(find.text('Đang phát thuyết minh âm thanh'), findsNothing);
 
     await _stopAll(tester);
   });

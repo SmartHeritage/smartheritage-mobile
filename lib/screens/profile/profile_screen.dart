@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../app_info.dart';
+import '../../l10n/l10n.dart';
 import '../../state/auth_state.dart';
 import '../../state/beacon_scan_state.dart';
+import '../../state/language_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/beacon_scan_toggle.dart';
+import '../about/about_screen.dart';
 import '../auth/register_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../help/help_screen.dart';
@@ -13,12 +16,35 @@ import 'edit_profile_screen.dart';
 import 'language_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    this.title,
+    this.showEditProfile = true,
+    this.linkAbout = false,
+    this.showAccountCard = true,
+  });
+
+  /// Tiêu đề thanh trên; mặc định "Tài khoản của tôi". V2 mở trang này từ ô
+  /// Cài đặt ở trang chủ nên đặt "Cài đặt".
+  final String? title;
+
+  /// Mục "Chỉnh sửa thông tin cá nhân". Trang Cài đặt của V2 bỏ mục này theo
+  /// yêu cầu (2026-10-21); V1 vẫn có.
+  final bool showEditProfile;
+
+  /// Mục "Về ứng dụng" mở trang Giới thiệu. Chỉ trang Cài đặt của V2 bật
+  /// (2026-10-21); V1 giữ nguyên.
+  final bool linkAbout;
+
+  /// Thẻ thông tin tài khoản đầu trang (avatar, tên, email) khi đã đăng nhập.
+  /// Trang Cài đặt của V2 bỏ thẻ này (2026-10-21) vì đã có tab Thông tin tài
+  /// khoản; khách vẫn thấy thẻ mời đăng nhập. V1 giữ nguyên.
+  final bool showAccountCard;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tài khoản của tôi')),
+      appBar: AppBar(title: Text(title ?? context.l10n.profileTitle)),
       body: ListenableBuilder(
         listenable: AuthController.instance,
         builder: (context, _) {
@@ -27,26 +53,33 @@ class ProfileScreen extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(
                 20, 12, 20, 32 + MediaQuery.paddingOf(context).bottom),
             children: [
-              _buildProfileCard(context),
-              const SizedBox(height: 24),
-              _sectionLabel('Cá nhân'),
-              _menuItem(
-                context,
-                icon: Icons.person_outline,
-                title: 'Chỉnh sửa thông tin cá nhân',
-                onTap: () async {
-                  if (!await AuthController.ensureLoggedIn(context)) return;
-                  if (!context.mounted) return;
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                  );
-                },
-              ),
+              if (showAccountCard || !isLoggedIn) ...[
+                _buildProfileCard(context),
+                const SizedBox(height: 24),
+              ],
+              _sectionLabel(context.l10n.profileSectionPersonal),
+              if (showEditProfile)
+                _menuItem(
+                  context,
+                  icon: Icons.person_outline,
+                  title: context.l10n.profileEdit,
+                  onTap: () async {
+                    if (!await AuthController.ensureLoggedIn(context)) return;
+                    if (!context.mounted) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen()),
+                    );
+                  },
+                ),
               _menuItem(
                 context,
                 icon: Icons.translate,
-                title: 'Ngôn ngữ',
-                trailingText: 'Tiếng Việt',
+                title: context.l10n.profileLanguage,
+                // Ngôn ngữ đang chọn (trước đây ghi cứng "Tiếng Việt").
+                trailingText: LanguageController.nativeName(
+                  LanguageController.instance.code,
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const LanguageScreen()),
                 ),
@@ -54,20 +87,20 @@ class ProfileScreen extends StatelessWidget {
               _menuItem(
                 context,
                 icon: Icons.history,
-                title: 'Lịch sử tham quan',
+                title: context.l10n.historyTitle,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const HistoryScreen()),
                 ),
               ),
               const SizedBox(height: 16),
-              _sectionLabel('Thiết bị'),
+              _sectionLabel(context.l10n.profileSectionDevice),
               _beaconScanItem(context),
               const SizedBox(height: 16),
-          _sectionLabel('Hỗ trợ'),
+          _sectionLabel(context.l10n.profileSectionSupport),
           _menuItem(
             context,
             icon: Icons.rate_review_outlined,
-            title: 'Đánh giá khu di tích',
+            title: context.l10n.profileRateSite,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const FeedbackScreen()),
             ),
@@ -75,7 +108,7 @@ class ProfileScreen extends StatelessWidget {
           _menuItem(
             context,
             icon: Icons.notifications_outlined,
-            title: 'Thông báo',
+            title: context.l10n.profileNotifications,
             trailing: Switch(
               value: true,
               onChanged: (_) {},
@@ -85,7 +118,7 @@ class ProfileScreen extends StatelessWidget {
           _menuItem(
             context,
             icon: Icons.help_outline,
-            title: 'Trợ giúp & câu hỏi thường gặp',
+            title: context.l10n.profileHelpFaq,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const HelpScreen()),
             ),
@@ -93,9 +126,13 @@ class ProfileScreen extends StatelessWidget {
           _menuItem(
             context,
             icon: Icons.info_outline,
-            title: 'Về ứng dụng',
+            title: context.l10n.profileAbout,
             trailingText: AppInfo.versionLabel,
-            onTap: () {},
+            onTap: linkAbout
+                ? () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AboutScreen()),
+                    )
+                : () {},
           ),
               const SizedBox(height: 24),
               if (isLoggedIn)
@@ -107,7 +144,7 @@ class ProfileScreen extends StatelessWidget {
                         color: AppColors.danger, width: 1.2),
                   ),
                   icon: const Icon(Icons.logout, size: 20),
-                  label: const Text('Đăng xuất'),
+                  label: Text(context.l10n.logout),
                 ),
             ],
           );
@@ -120,10 +157,10 @@ class ProfileScreen extends StatelessWidget {
     final auth = AuthController.instance;
     // Khách và người đã đăng nhập dùng hai card khác nhau hẳn: card guest
     // không có avatar rỗng, mà nói rõ đăng nhập thì được gì.
-    return auth.isLoggedIn ? _loggedInCard(auth) : _guestCard(context);
+    return auth.isLoggedIn ? _loggedInCard(context, auth) : _guestCard(context);
   }
 
-  Widget _loggedInCard(AuthController auth) {
+  Widget _loggedInCard(BuildContext context, AuthController auth) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -147,13 +184,13 @@ class ProfileScreen extends StatelessWidget {
             child: const Icon(Icons.person, size: 36, color: AppColors.primary),
           ),
           const SizedBox(width: 14),
-          Expanded(child: _loggedInInfo(auth)),
+          Expanded(child: _loggedInInfo(context, auth)),
         ],
       ),
     );
   }
 
-  Widget _loggedInInfo(AuthController auth) {
+  Widget _loggedInInfo(BuildContext context, AuthController auth) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -182,13 +219,13 @@ class ProfileScreen extends StatelessWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.workspace_premium,
+            children: [
+              const Icon(Icons.workspace_premium,
                   size: 14, color: Color(0xFFFFD97D)),
-              SizedBox(width: 4),
+              const SizedBox(width: 4),
               Text(
-                'Nhà thám hiểm di sản',
-                style: TextStyle(
+                context.l10n.profileBadge,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -226,10 +263,10 @@ class ProfileScreen extends StatelessWidget {
                     size: 30, color: AppColors.primary),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Tham quan có tài khoản riêng',
-                  style: TextStyle(
+                  context.l10n.profileGuestTitle,
+                  style: const TextStyle(
                     fontSize: 16.5,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
@@ -245,7 +282,7 @@ class ProfileScreen extends StatelessWidget {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => AuthController.ensureLoggedIn(context),
-                  child: const Text('Đăng nhập'),
+                  child: Text(context.l10n.login),
                 ),
               ),
               const SizedBox(width: 12),
@@ -254,7 +291,7 @@ class ProfileScreen extends StatelessWidget {
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const RegisterScreen()),
                   ),
-                  child: const Text('Đăng ký'),
+                  child: Text(context.l10n.register),
                 ),
               ),
             ],
@@ -274,8 +311,10 @@ class ProfileScreen extends StatelessWidget {
         return _menuItem(
           context,
           icon: scanning ? Icons.bluetooth_searching : Icons.bluetooth_disabled,
-          title: 'Quét iBeacon',
-          trailingText: scanning ? 'Đang quét' : 'Đang tắt',
+          title: context.l10n.profileBeaconScan,
+          trailingText: scanning
+              ? context.l10n.homeScanning
+              : context.l10n.profileScanOff,
           trailing: Switch(
             value: scanning,
             onChanged: (_) => toggleBeaconScan(context),
@@ -370,12 +409,12 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Đăng xuất'),
-        content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?'),
+        title: Text(context.l10n.logout),
+        content: Text(context.l10n.logoutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Huỷ'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -383,6 +422,7 @@ class ProfileScreen extends StatelessWidget {
               // pop, mà logout thì còn phải chờ mạng. Lấy trước cả hai để
               // không chạm vào BuildContext sau await.
               final messenger = ScaffoldMessenger.of(dialogContext);
+              final loggedOut = context.l10n.loggedOut;
               final navigator = Navigator.of(context);
               Navigator.of(dialogContext).pop();
               // Đăng xuất về chế độ khách, vẫn ở trong app.
@@ -395,11 +435,11 @@ class ProfileScreen extends StatelessWidget {
               messenger
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
-                  const SnackBar(content: Text('Đã đăng xuất')),
+                  SnackBar(content: Text(loggedOut)),
                 );
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Đăng xuất'),
+            child: Text(context.l10n.logout),
           ),
         ],
       ),

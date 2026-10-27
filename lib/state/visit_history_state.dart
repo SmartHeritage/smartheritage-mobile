@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/artifact_repository.dart';
 import '../data/mock_data.dart';
+import '../l10n/l10n.dart';
 import '../services/api_client.dart';
 import 'auth_state.dart';
 
@@ -223,8 +224,8 @@ class VisitHistoryController extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(t.year, t.month, t.day);
     final diff = today.difference(day).inDays;
-    if (diff == 0) return 'Hôm nay';
-    if (diff == 1) return 'Hôm qua';
+    if (diff == 0) return appStrings.today;
+    if (diff == 1) return appStrings.yesterday;
     return '${_two(t.day)}/${_two(t.month)}/${t.year}';
   }
 

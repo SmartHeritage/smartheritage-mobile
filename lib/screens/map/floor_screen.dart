@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/attraction.dart';
+import '../../l10n/l10n.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/heritage_map.dart';
@@ -107,10 +108,10 @@ class FloorScreen extends StatelessWidget {
             ],
           );
         } else {
-          view = const MapMessage(
+          view = MapMessage(
             icon: Icons.layers_outlined,
-            title: 'Tầng này chưa có sơ đồ',
-            text: 'Chọn một khu vực bên dưới để xem bản đồ của nó.',
+            title: context.l10n.mapFloorNoPlan,
+            text: context.l10n.mapPickAreaBelow,
           );
         }
 
@@ -221,10 +222,10 @@ class _PlanViewState extends State<_PlanView> {
       return const Center(child: CircularProgressIndicator());
     }
     if (ratio <= 0) {
-      return const MapMessage(
+      return MapMessage(
         icon: Icons.broken_image_outlined,
-        title: 'Không tải được sơ đồ tầng',
-        text: 'Chọn một khu vực bên dưới để xem bản đồ của nó.',
+        title: context.l10n.mapFloorPlanLoadFailed,
+        text: context.l10n.mapPickAreaBelow,
       );
     }
     final blocks = _blocks;
@@ -372,13 +373,13 @@ class _AttractionStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (attractions.isEmpty) {
-      return const SafeArea(
+      return SafeArea(
         top: false,
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Text(
-            'Tầng này chưa có khu vực nào.',
-            style: TextStyle(color: AppColors.textSecondary),
+            context.l10n.mapFloorNoAreas,
+            style: const TextStyle(color: AppColors.textSecondary),
           ),
         ),
       );

@@ -42,6 +42,7 @@ void main() {
   });
 
   testWidgets('bấm vào hàng thì bật quét và đổi nhãn', (tester) async {
+    AuthController.instance.setTestSession();
     await tester.pumpWidget(_harness());
     await _scrollToBeaconItem(tester);
 

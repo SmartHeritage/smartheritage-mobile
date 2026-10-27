@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
+import '../l10n/l10n.dart';
 import '../services/mapbox_config.dart';
 import '../theme/app_theme.dart';
 
@@ -340,29 +341,33 @@ class _HeritageMapState extends State<HeritageMap> {
     // sau thắng, nên bản đồ lúc ôm hết điểm lúc chỉ zoom vào một điểm.
   }
 
-  /// Tắt icon địa điểm có sẵn của Mapbox (quán, cửa hàng, trạm xe…) để trên
-  /// bản đồ chỉ còn ghim của các điểm đã cấu hình ở admin — icon lạ dễ bị
-  /// nhầm là điểm tham quan. Giữ tên đường/tên vùng để còn định hướng.
+  /// Tắt mọi chữ và icon có sẵn của nền Mapbox — tên tỉnh/phường/sông, tên
+  /// đường, quán xá, trạm xe, công trình nổi tiếng — để trên bản đồ chỉ còn
+  /// ghim và tên của các điểm đã cấu hình ở admin (theo yêu cầu 2026-10-21;
+  /// trước đó còn giữ tên đường/tên vùng để định hướng). Ghim của app là lớp
+  /// annotation riêng nên không bị ảnh hưởng.
   ///
   /// Là cấu hình của style Standard nên phải đặt sau khi style tải xong, và
   /// đặt lại mỗi lần style tải lại.
   Future<void> _hideBasemapPlaces() async {
     final map = _map;
     if (map == null) return;
-    try {
-      await map.setStyleImportConfigProperty(
-        'basemap',
-        'showPointOfInterestLabels',
-        false,
-      );
-      await map.setStyleImportConfigProperty(
-        'basemap',
-        'showTransitLabels',
-        false,
-      );
-    } catch (_) {
-      // Style không phải Standard (không có import `basemap`) — bỏ qua, bản
-      // đồ vẫn dùng được, chỉ còn icon địa điểm của Mapbox.
+    // Từng thuộc tính một: bản SDK/style cũ thiếu thuộc tính nào (vd.
+    // showLandmarkIcons) thì chỉ bỏ qua thuộc tính đó, các cái khác vẫn tắt.
+    for (final property in const [
+      'showPlaceLabels',
+      'showRoadLabels',
+      'showPointOfInterestLabels',
+      'showTransitLabels',
+      'showLandmarkIcons',
+      'showLandmarkIconLabels',
+    ]) {
+      try {
+        await map.setStyleImportConfigProperty('basemap', property, false);
+      } catch (_) {
+        // Style không phải Standard (không có import `basemap`) hoặc thuộc
+        // tính không có — bản đồ vẫn dùng được, chỉ còn chữ của Mapbox.
+      }
     }
   }
 
@@ -726,12 +731,10 @@ class _HeritageMapState extends State<HeritageMap> {
       return _TestMapStub(pins: widget.pins, blocks: widget.blocks);
     }
     if (!MapboxConfig.isConfigured) {
-      return const MapMessage(
+      return MapMessage(
         icon: Icons.map_outlined,
-        title: 'Bản đồ chưa sẵn sàng',
-        text:
-            'Bản build này chưa có token Mapbox. Chạy lại với '
-            '--dart-define-from-file=mapbox.local.json.',
+        title: context.l10n.mapNotReadyTitle,
+        text: context.l10n.mapNotReadyText,
       );
     }
     return LayoutBuilder(
@@ -867,7 +870,7 @@ class MapFitAllButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MapIconButton(
     icon: Icons.zoom_out_map,
-    tooltip: 'Xem tất cả',
+    tooltip: context.l10n.seeAll,
     onPressed: onPressed,
   );
 }

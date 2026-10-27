@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smartheritage/data/favorite_repository.dart';
 import 'package:smartheritage/services/api_client.dart';
+import 'package:smartheritage/services/google_auth.dart';
 import 'package:smartheritage/services/token_store.dart';
 import 'package:smartheritage/state/auth_state.dart';
 
@@ -39,7 +40,24 @@ AuthController _auth(MockClient mock) {
   return AuthController(api: api);
 }
 
+/// Thay màn chọn tài khoản Google + Firebase bằng token cố định (`null` =
+/// người dùng huỷ).
+class _FakeGoogleAuth extends GoogleAuth {
+  _FakeGoogleAuth(this.token);
+
+  final String? token;
+  int signOuts = 0;
+
+  @override
+  Future<String?> signIn() async => token;
+
+  @override
+  Future<void> signOut() async => signOuts++;
+}
+
 void main() {
+  tearDown(() => GoogleAuth.instance = GoogleAuth());
+
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await TokenStore.instance.clear();
@@ -245,5 +263,70 @@ void main() {
         throwsA(isA<ApiException>()));
 
     expect(auth.isLoggedIn, isFalse);
+  });
+
+  group('đăng nhập Google', () {
+    test('gửi Firebase ID token lên /auth/google rồi lưu phiên', () async {
+      GoogleAuth.instance = _FakeGoogleAuth('firebase-token');
+      Map<String, dynamic>? sentBody;
+      final auth = _auth(MockClient((req) async {
+        if (req.url.path.endsWith('/favorites')) return _json([]);
+        expect(req.url.path, '/api/v1/auth/google');
+        sentBody = jsonDecode(req.body) as Map<String, dynamic>;
+        return _json({
+          'accessToken': 'a1',
+          'refreshToken': 'r1',
+          'user': _user(),
+        });
+      }));
+
+      expect(await auth.signInWithGoogle(), isTrue);
+      expect(sentBody, {'idToken': 'firebase-token'});
+      expect(auth.isLoggedIn, isTrue);
+      expect(TokenStore.instance.refreshToken, 'r1');
+      expect(auth.isBusy, isFalse);
+    });
+
+    test('huỷ chọn tài khoản thì không gọi backend', () async {
+      GoogleAuth.instance = _FakeGoogleAuth(null);
+      var calls = 0;
+      final auth = _auth(MockClient((_) async {
+        calls++;
+        return _json({});
+      }));
+
+      expect(await auth.signInWithGoogle(), isFalse);
+      expect(calls, 0);
+      expect(auth.isLoggedIn, isFalse);
+      expect(auth.isBusy, isFalse);
+    });
+
+    test('401/503 của backend thành câu báo dễ hiểu', () async {
+      GoogleAuth.instance = _FakeGoogleAuth('t');
+      for (final (status, text) in [
+        (401, 'Tài khoản Google này không dùng được'),
+        (503, 'Máy chủ chưa bật đăng nhập Google.'),
+      ]) {
+        final auth = _auth(MockClient(
+            (_) async => _json({'message': 'English dev message'}, status)));
+        await expectLater(
+          auth.signInWithGoogle(),
+          throwsA(isA<ApiException>()
+              .having((e) => e.message, 'message', startsWith(text))),
+        );
+        expect(auth.isLoggedIn, isFalse);
+      }
+    });
+
+    test('đăng xuất thì quên luôn tài khoản Google', () async {
+      final google = _FakeGoogleAuth('t');
+      GoogleAuth.instance = google;
+      final auth = _auth(MockClient((_) async => _json({})))..setTestSession();
+
+      await auth.logout();
+
+      expect(auth.isLoggedIn, isFalse);
+      expect(google.signOuts, 1);
+    });
   });
 }

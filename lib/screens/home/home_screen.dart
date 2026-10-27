@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
+import '../../l10n/l10n.dart';
 import '../../state/audio_player_state.dart';
+import '../../state/auth_state.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../state/notification_state.dart';
 import '../../state/visit_history_state.dart';
@@ -58,8 +60,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _scan.consumeDetection();
     // Phát thuyết minh ngay khi beacon phát hiện — khách không phải bấm gì.
     // Nếu đang tắt tiếng thì vẫn chạy, chỉ im lặng. Hiện vật chưa có bản thu
-    // thì không gọi play: sheet sẽ nói rõ thay vì hứa suông.
-    if (artifact.hasAudio) {
+    // thì không gọi play: sheet sẽ nói rõ thay vì hứa suông. Khách chưa đăng
+    // nhập thì không tự phát (nghe thuyết minh phải đăng nhập — 2026-10-21);
+    // sheet mời đăng nhập để nghe.
+    if (artifact.hasAudio && AuthController.instance.isLoggedIn) {
       AudioPlayerController.instance.play(artifact);
     }
     _showBeaconSheet(artifact);
@@ -392,16 +396,16 @@ class BeaconDetectedSheet extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(
+              children: [
+                const Icon(
                   Icons.bluetooth_connected,
                   size: 16,
                   color: AppColors.accent,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
-                  'Phát hiện qua iBeacon · cách bạn ~2m',
-                  style: TextStyle(
+                  context.l10n.beaconDetectedVia,
+                  style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primaryLight,
@@ -450,7 +454,7 @@ class BeaconDetectedSheet extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Để sau'),
+                  child: Text(context.l10n.beaconLater),
                 ),
               ),
               const SizedBox(width: 14),
@@ -458,14 +462,9 @@ class BeaconDetectedSheet extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            ArtifactDetailScreen(artifact: artifact),
-                      ),
-                    );
+                    openArtifactDetail(context, artifact);
                   },
-                  child: const Text('Khám phá ngay'),
+                  child: Text(context.l10n.beaconExploreNow),
                 ),
               ),
             ],
@@ -513,6 +512,55 @@ class _BeaconNoAudioNotice extends StatelessWidget {
   }
 }
 
+/// Khách chưa đăng nhập: beacon không tự phát thuyết minh, thay vào đó mời
+/// đăng nhập — xong thì phát luôn, khách không phải tìm lại hiện vật.
+class _BeaconLoginToListen extends StatelessWidget {
+  const _BeaconLoginToListen({required this.artifact});
+
+  final Artifact artifact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.headphones_outlined,
+              color: AppColors.primary, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              context.l10n.beaconAudioLogin,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14.5,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (await AuthController.ensureLoggedIn(context)) {
+                AudioPlayerController.instance.play(artifact);
+              }
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              minimumSize: const Size(0, 36),
+            ),
+            child: Text(context.l10n.login),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BeaconAudioStatus extends StatelessWidget {
   const _BeaconAudioStatus({required this.artifact});
 
@@ -522,9 +570,14 @@ class _BeaconAudioStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = AudioPlayerController.instance;
     return ListenableBuilder(
-      listenable: controller,
+      // Nghe cả đăng nhập: khách đăng nhập từ chính sheet này thì đổi sang
+      // trạng thái đang phát.
+      listenable: Listenable.merge([controller, AuthController.instance]),
       builder: (context, _) {
         if (!artifact.hasAudio) return const _BeaconNoAudioNotice();
+        if (!AuthController.instance.isLoggedIn) {
+          return _BeaconLoginToListen(artifact: artifact);
+        }
         final muted = controller.isMuted;
         return Container(
           padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
@@ -549,8 +602,8 @@ class _BeaconAudioStatus extends StatelessWidget {
               Expanded(
                 child: Text(
                   muted
-                      ? 'Thuyết minh đang tắt tiếng'
-                      : 'Đang phát thuyết minh âm thanh',
+                      ? context.l10n.beaconAudioMuted
+                      : context.l10n.beaconAudioPlaying,
                   style: TextStyle(
                     color: muted ? AppColors.textPrimary : Colors.white,
                     fontWeight: FontWeight.w700,
@@ -565,7 +618,9 @@ class _BeaconAudioStatus extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   minimumSize: const Size(0, 36),
                 ),
-                child: Text(muted ? 'Bật tiếng' : 'Tắt tiếng'),
+                child: Text(
+                  muted ? context.l10n.playerUnmute : context.l10n.playerMute,
+                ),
               ),
             ],
           ),
@@ -584,11 +639,7 @@ class _FeaturedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ArtifactDetailScreen(artifact: artifact),
-        ),
-      ),
+      onTap: () => openArtifactDetail(context, artifact),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,

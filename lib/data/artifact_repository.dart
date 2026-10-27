@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../l10n/l10n.dart';
 import '../services/api_client.dart';
 import 'attraction.dart';
 import 'mock_data.dart';
@@ -176,7 +177,7 @@ class ArtifactRepository extends ChangeNotifier {
       query: lang == null ? null : {'language': lang},
     );
     if (data is! Map<String, dynamic>) {
-      throw ApiException('Máy chủ trả về dữ liệu không hợp lệ.');
+      throw ApiException(appStrings.invalidServerData);
     }
     return AttractionMap.fromJson(data, lookup: tryById);
   }
@@ -187,7 +188,7 @@ class ArtifactRepository extends ChangeNotifier {
   Future<List<Floor>> fetchFloors(String tourismAreaId) async {
     final data = await _api.get('/tourism-areas/$tourismAreaId/floors');
     if (data is! List) {
-      throw ApiException('Máy chủ trả về dữ liệu không hợp lệ.');
+      throw ApiException(appStrings.invalidServerData);
     }
     return data.whereType<Map<String, dynamic>>().map(Floor.fromJson).toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));

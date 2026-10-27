@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
 import '../../data/review_repository.dart';
+import '../../l10n/l10n.dart';
 import '../../services/api_client.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
+import '../../widgets/nested_tab_scroll.dart';
 
 /// Đánh giá và gửi phản hồi về hiện vật hoặc khu di tích, dạng màn hình riêng.
 ///
@@ -19,7 +21,7 @@ class FeedbackScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Đánh giá & phản hồi')),
+      appBar: AppBar(title: Text(context.l10n.feedbackTitle)),
       body: FeedbackForm(
         artifact: artifact,
         onSubmitted: () => Navigator.of(context).pop(),
@@ -63,17 +65,20 @@ class _FeedbackFormState extends State<FeedbackForm> {
   final Set<String> _tags = {};
   final _controller = TextEditingController();
 
-  /// Mã tag lấy từ [reviewTagLabels] — gửi mã lên server, hiện nhãn cho khách.
-  static final _tagOptions = reviewTagLabels.keys.toList();
+  /// Mã tag lấy từ [reviewTagCodes] — gửi mã lên server, hiện nhãn cho khách.
+  static const _tagOptions = reviewTagCodes;
 
-  static const _ratingLabels = [
-    '',
-    'Rất tệ',
-    'Chưa hài lòng',
-    'Bình thường',
-    'Hài lòng',
-    'Tuyệt vời',
-  ];
+  String _ratingLabel(int rating) {
+    final l10n = context.l10n;
+    return switch (rating) {
+      1 => l10n.rating1,
+      2 => l10n.rating2,
+      3 => l10n.rating3,
+      4 => l10n.rating4,
+      5 => l10n.rating5,
+      _ => '',
+    };
+  }
 
   @override
   void dispose() {
@@ -84,7 +89,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
   Future<void> _submit() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(errorSnackBar('Vui lòng chọn số sao đánh giá'));
+          .showSnackBar(errorSnackBar(context.l10n.feedbackPickRating));
       return;
     }
     // POST /reviews yêu cầu đăng nhập — đánh giá gắn với tài khoản.
@@ -94,6 +99,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
     setState(() => _busy = true);
     // Lấy messenger trước khi pop — sau khi pop thì context không còn dùng được.
     final messenger = ScaffoldMessenger.of(context);
+    final thanks = context.l10n.feedbackThanks;
     try {
       await ReviewRepository.instance.submit(
         artifactId: widget.artifact?.id,
@@ -123,9 +129,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
     }
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(
-        content: Text('Cảm ơn bạn! Phản hồi đã được gửi thành công.'),
-      ));
+      ..showSnackBar(SnackBar(content: Text(thanks)));
   }
 
   @override
@@ -172,10 +176,10 @@ class _FeedbackFormState extends State<FeedbackForm> {
               ),
             )
           else
-            const Text(
-              'Trải nghiệm tham quan của bạn hôm nay thế nào?',
+            Text(
+              context.l10n.feedbackHowWasVisit,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -204,7 +208,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
           ),
           const SizedBox(height: 8),
           Text(
-            _ratingLabels[_rating],
+            _ratingLabel(_rating),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 15,
@@ -213,9 +217,9 @@ class _FeedbackFormState extends State<FeedbackForm> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Điều gì khiến bạn ấn tượng?',
-            style: TextStyle(
+          Text(
+            context.l10n.feedbackWhatImpressed,
+            style: const TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
@@ -228,7 +232,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
             children: [
               for (final tag in _tagOptions)
                 FilterChip(
-                  label: Text(reviewTagLabels[tag]!),
+                  label: Text(reviewTagLabel(tag)!),
                   selected: _tags.contains(tag),
                   onSelected: (selected) => setState(() {
                     selected ? _tags.add(tag) : _tags.remove(tag);
@@ -245,9 +249,9 @@ class _FeedbackFormState extends State<FeedbackForm> {
             ],
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Chia sẻ thêm với chúng tôi',
-            style: TextStyle(
+          Text(
+            context.l10n.feedbackTellUsMore,
+            style: const TextStyle(
               fontSize: 15.5,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
@@ -257,16 +261,15 @@ class _FeedbackFormState extends State<FeedbackForm> {
           TextField(
             controller: _controller,
             maxLines: 5,
-            decoration: const InputDecoration(
-              hintText:
-                  'Cảm nhận, góp ý của bạn giúp chúng tôi phục vụ tốt hơn...',
+            decoration: InputDecoration(
+              hintText: context.l10n.feedbackHint,
             ),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.add_a_photo_outlined, size: 20),
-            label: const Text('Đính kèm hình ảnh'),
+            label: Text(context.l10n.feedbackAttachPhoto),
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(
@@ -281,7 +284,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
                     ),
                   )
                 : const Icon(Icons.send_rounded, size: 20),
-            label: const Text('Gửi phản hồi'),
+            label: Text(context.l10n.feedbackSend),
           ),
         ],
       );
@@ -327,64 +330,71 @@ class _ArtifactReviewsTabState extends State<ArtifactReviewsTab> {
 
   @override
   Widget build(BuildContext context) {
-    // SingleChildScrollView + Column chứ không phải ListView: tab này nằm trong
-    // NestedScrollView của trang chi tiết, và ListView ở đó làm ensureVisible
-    // cuộn qua lại không bao giờ dừng.
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-        FutureBuilder<List<Review>>(
-          future: _reviews,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 28),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            // Lỗi mạng: không chặn đường gửi đánh giá mới, chỉ nói là chưa
-            // tải được phần đã có.
-            if (snapshot.hasError) {
-              return _notice(
-                'Chưa tải được danh sách đánh giá.',
-                onRetry: _reload,
-              );
-            }
-            final reviews = snapshot.data ?? const <Review>[];
-            if (reviews.isEmpty) {
-              return _notice('Chưa có đánh giá nào. Hãy là người đầu tiên!');
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                  child: Text(
-                    'Đánh giá của khách tham quan (${reviews.length})',
-                    style: const TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                for (final review in reviews) _ReviewCard(review: review),
-                const SizedBox(height: 8),
-                const Divider(height: 1, color: AppColors.divider),
-              ],
-            );
-          },
+    return CustomScrollView(
+      slivers: [
+        // Bù phần đầu ghim (tên + tab) của trang chi tiết hiện vật.
+        ...nestedOverlapInjector(context),
+        // Một khối Column chứ không phải SliverList: ListView/SliverList trong
+        // NestedScrollView làm ensureVisible cuộn qua lại không bao giờ dừng.
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FutureBuilder<List<Review>>(
+                future: _reviews,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 28),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  // Lỗi mạng: không chặn đường gửi đánh giá mới, chỉ nói là chưa
+                  // tải được phần đã có.
+                  if (snapshot.hasError) {
+                    return _notice(
+                      context.l10n.reviewsLoadFailed,
+                      onRetry: _reload,
+                    );
+                  }
+                  final reviews = snapshot.data ?? const <Review>[];
+                  if (reviews.isEmpty) {
+                    return _notice(
+                      context.l10n.reviewsEmpty,
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                        child: Text(
+                          context.l10n.reviewsHeader(reviews.length),
+                          style: const TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      for (final review in reviews) _ReviewCard(review: review),
+                      const SizedBox(height: 8),
+                      const Divider(height: 1, color: AppColors.divider),
+                    ],
+                  );
+                },
+              ),
+              FeedbackForm(
+                artifact: widget.artifact,
+                // Đã nằm trong ListView của tab rồi, không tự cuộn nữa.
+                scrollable: false,
+                // Dạng tab thì form tự xoá; nạp lại để thấy đánh giá vừa gửi.
+                onSubmittedInPlace: _reload,
+              ),
+            ],
+          ),
         ),
-        FeedbackForm(
-          artifact: widget.artifact,
-          // Đã nằm trong ListView của tab rồi, không tự cuộn nữa.
-          scrollable: false,
-          // Dạng tab thì form tự xoá; nạp lại để thấy đánh giá vừa gửi.
-          onSubmittedInPlace: _reload,
-        ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -402,7 +412,7 @@ class _ArtifactReviewsTabState extends State<ArtifactReviewsTab> {
             ),
           ),
           if (onRetry != null)
-            TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+            TextButton(onPressed: onRetry, child: Text(context.l10n.retry)),
         ],
       ),
     );

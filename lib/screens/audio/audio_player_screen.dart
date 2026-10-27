@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/mock_data.dart';
+import '../../l10n/l10n.dart';
 import '../../state/audio_player_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/rich_text_content.dart';
@@ -47,6 +48,23 @@ class AudioPlayerScreen extends StatefulWidget {
 class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   final _controller = AudioPlayerController.instance;
 
+  /// Hiện vật đang hiển thị. Ban đầu là [AudioPlayerScreen.artifact], nhưng
+  /// nghe theo Danh sách nghe thì hết bài player tự sang bài kế — màn này đi
+  /// theo, không đứng lại ở bài cũ với tiến trình 0.
+  late Artifact _shown = widget.artifact;
+
+  Artifact _followQueue() {
+    final playing = _controller.artifact;
+    bool inQueue(Artifact a) => _controller.queue.any((q) => q.id == a.id);
+    if (playing != null &&
+        playing.id != _shown.id &&
+        inQueue(playing) &&
+        inQueue(_shown)) {
+      _shown = playing;
+    }
+    return _shown;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -62,19 +80,19 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final artifact = widget.artifact;
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: _backdrop(artifact)),
-        child: SafeArea(
-          child: ListenableBuilder(
-            listenable: _controller,
-            builder: (context, _) {
-              // Progress của controller là chung; nếu đang phát hiện vật khác
-              // thì màn này hiện 0 thay vì tiến trình của bài kia.
-              final active = _controller.artifact?.id == artifact.id;
-              final progress = active ? _controller.progress : 0.0;
-              return Column(
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final artifact = _followQueue();
+        // Progress của controller là chung; nếu đang phát hiện vật khác
+        // thì màn này hiện 0 thay vì tiến trình của bài kia.
+        final active = _controller.artifact?.id == artifact.id;
+        final progress = active ? _controller.progress : 0.0;
+        return Scaffold(
+          body: Container(
+            decoration: BoxDecoration(gradient: _backdrop(artifact)),
+            child: SafeArea(
+              child: Column(
                 children: [
                   _topBar(context, artifact),
                   // Artwork co theo chỗ còn lại nên không bao giờ tràn, kể cả
@@ -106,11 +124,11 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
                   const SizedBox(height: 10),
                   _contentCard(context, artifact),
                 ],
-              );
-            },
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -138,12 +156,12 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
               color: Colors.white, size: 30),
         ),
-        const Expanded(
+        Expanded(
           child: Text(
-            'Thuyết minh âm thanh',
+            context.l10n.playerNarration,
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 14.5,
               fontWeight: FontWeight.w700,
@@ -151,10 +169,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
           ),
         ),
         IconButton(
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => ArtifactDetailScreen(artifact: artifact),
-          )),
-          tooltip: 'Xem chi tiết hiện vật',
+          onPressed: () => openArtifactDetail(context, artifact),
+          tooltip: context.l10n.audioViewArtifact,
           icon: const Icon(Icons.more_horiz, color: Colors.white),
         ),
       ],
@@ -220,9 +236,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   Widget _statusLine(Artifact artifact, bool active) {
     final String? message;
     if (!artifact.hasAudio) {
-      message = 'Hiện vật này chưa có bản thuyết minh.';
+      message = context.l10n.audioNoRecording;
     } else if (active && _controller.isLoading) {
-      message = 'Đang tải bản thuyết minh…';
+      message = context.l10n.audioLoading;
     } else if (active && _controller.error != null) {
       message = _controller.error;
     } else {
@@ -297,7 +313,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
       children: [
         IconButton(
           onPressed: _controller.toggleMute,
-          tooltip: _controller.isMuted ? 'Bật tiếng' : 'Tắt tiếng',
+          tooltip: _controller.isMuted
+              ? context.l10n.playerUnmute
+              : context.l10n.playerMute,
           icon: Icon(
             _controller.isMuted
                 ? Icons.volume_off_rounded
@@ -382,13 +400,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LanguageScreen()),
             ),
-            tooltip: 'Ngôn ngữ thuyết minh',
+            tooltip: context.l10n.audioLanguage,
             icon: Icon(Icons.translate,
                 color: Colors.white.withValues(alpha: 0.75), size: 22),
           ),
           IconButton(
             onPressed: () => _share(context, artifact),
-            tooltip: 'Chia sẻ',
+            tooltip: context.l10n.share,
             icon: Icon(Icons.ios_share,
                 color: Colors.white.withValues(alpha: 0.75), size: 22),
           ),
@@ -415,7 +433,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             Row(
               children: [
                 Text(
-                  'Nội dung thuyết minh',
+                  context.l10n.audioTranscript,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.75),
                     fontSize: 12.5,
@@ -500,6 +518,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
   Future<void> _share(BuildContext context, Artifact artifact) async {
     final messenger = ScaffoldMessenger.of(context);
+    final copied = context.l10n.audioLinkCopied;
     await Clipboard.setData(
       ClipboardData(
         text: 'smartheritage://artifact/${artifact.id} — ${artifact.name}',
@@ -507,9 +526,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
     );
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(
-        content: Text('Đã sao chép liên kết hiện vật'),
-      ));
+      ..showSnackBar(SnackBar(content: Text(copied)));
   }
 
   static const _timeStyle = TextStyle(

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/artifact_repository.dart';
@@ -20,16 +21,21 @@ class LanguageController extends ChangeNotifier {
   static const _key = 'visitor.language';
   static const defaultCode = 'vi';
 
-  /// Nhãn hiển thị cho các mã quen thuộc. Mã lạ (admin vừa thêm vào Language
-  /// Registry) vẫn chọn được, chỉ là hiện bằng chính mã đó.
-  static const labels = <String, (String flag, String name, String sub)>{
-    'vi': ('🇻🇳', 'Tiếng Việt', 'Vietnamese'),
-    'en': ('🇬🇧', 'English', 'Tiếng Anh'),
-    'fr': ('🇫🇷', 'Français', 'Tiếng Pháp'),
-    'ja': ('🇯🇵', '日本語', 'Tiếng Nhật'),
-    'ko': ('🇰🇷', '한국어', 'Tiếng Hàn'),
-    'zh': ('🇨🇳', '中文', 'Tiếng Trung'),
+  /// Cờ và tên gốc (bằng chính thứ tiếng đó) của các mã quen thuộc. Mã lạ (admin
+  /// vừa thêm vào Language Registry) vẫn chọn được, chỉ là hiện bằng chính mã đó.
+  /// Tên theo ngôn ngữ giao diện thì ở `languageName` (lib/l10n/l10n.dart).
+  static const labels = <String, (String flag, String name)>{
+    'vi': ('🇻🇳', 'Tiếng Việt'),
+    'en': ('🇬🇧', 'English'),
+    'fr': ('🇫🇷', 'Français'),
+    'ja': ('🇯🇵', '日本語'),
+    'ko': ('🇰🇷', '한국어'),
+    'zh': ('🇨🇳', '中文'),
   };
+
+  /// Tên gốc của [code], vd. `日本語`; mã lạ thì viết hoa chính mã.
+  static String nativeName(String code) =>
+      labels[code]?.$2 ?? code.toUpperCase();
 
   String _code = defaultCode;
   bool _wasLoggedIn = false;
@@ -47,6 +53,17 @@ class LanguageController extends ChangeNotifier {
   set newsForTest(NewsRepository repo) => _news = repo;
 
   String get code => _code;
+
+  /// Ngôn ngữ đã có bản dịch GIAO DIỆN (file `lib/l10n/app_<mã>.arb`). Nội dung
+  /// (hiện vật, tin tức) thì theo backend, có thể có nhiều thứ tiếng hơn.
+  static const uiLanguages = ['vi', 'en'];
+
+  /// Ngôn ngữ giao diện: đúng [code] nếu đã dịch, chưa thì tiếng Anh — khách đã
+  /// chọn ngoại ngữ thường đọc tiếng Anh dễ hơn tiếng Việt.
+  Locale get uiLocale => Locale(uiLanguages.contains(_code) ? _code : 'en');
+
+  /// [code] đã có bản dịch giao diện chưa.
+  bool get hasUiTranslation => uiLanguages.contains(_code);
 
   /// Những ngôn ngữ hiện chọn được: theo backend nếu đã biết, không thì hai
   /// thứ tiếng app có sẵn bản dịch.

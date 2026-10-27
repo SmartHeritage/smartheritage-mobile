@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config.dart';
+import 'tiptap.dart';
 
 /// Mô hình hiện vật — dùng chung cho cả dữ liệu mẫu và dữ liệu thật từ API.
 class Artifact {
@@ -42,6 +43,21 @@ class Artifact {
   /// Backend đã bỏ Zone: hiện vật thuộc về một Attraction qua `attractionId`.
   /// [attractionNames] (id → tên, từ `GET /attractions`) cho phép hiển thị tên
   /// điểm tham quan ở đúng chỗ trước đây hiện tên khu trưng bày.
+  /// Mô tả để `RichTextContent` dựng. Backend làm phẳng tài liệu DETAIL thành
+  /// chữ thuần ở `description` (mất in đậm/nghiêng/danh sách soạn ở admin);
+  /// từ 2026-10-21 nó trả thêm nguyên Tiptap JSON ở `descriptionJson` → đổi sang
+  /// HTML để giữ định dạng. Backend cũ (không có trường mới) thì dùng chữ thuần.
+  ///
+  /// Chữ thuần rỗng nghĩa là không có bản cho ngôn ngữ này — giữ rỗng, đừng để
+  /// một `<p></p>` trống làm màn chi tiết tưởng là có nội dung.
+  static String _descriptionFrom(Map<String, dynamic> json) {
+    final plain = (json['description'] as String?) ?? '';
+    final doc = json['descriptionJson'];
+    if (doc is! Map || plain.trim().isEmpty) return plain;
+    final html = tiptapToHtml(doc);
+    return html.isEmpty ? plain : html;
+  }
+
   factory Artifact.fromJson(
     Map<String, dynamic> json, {
     Map<String, String> attractionNames = const {},
@@ -59,7 +75,7 @@ class Artifact {
           (json['zone'] as String?) ??
           '',
       shortIntro: (json['shortIntro'] as String?) ?? '',
-      description: (json['description'] as String?) ?? '',
+      description: _descriptionFrom(json),
       icon: decor?.icon ?? Icons.museum_outlined,
       gradient: decor?.gradient ??
           const [Color(0xFF8C2B21), Color(0xFFC1613C)],
@@ -150,7 +166,8 @@ class Artifact {
   final String audioDuration;
   final String videoDuration;
 
-  /// Ảnh thật của hiện vật (điền link khi có; null → dùng ảnh placeholder).
+  /// Ảnh đại diện admin tải lên (`imageUrl` của backend). Hiện trước mọi ảnh khác;
+  /// null hoặc tải lỗi → ảnh đóng gói, rồi placeholder.
   final String? imageUrl;
 
   /// File thuyết minh do admin tải lên. `null` nghĩa là hiện vật này chưa có
@@ -161,7 +178,8 @@ class Artifact {
 
   bool get hasAudio => audioUrl != null && audioUrl!.isNotEmpty;
 
-  /// Ảnh thật đóng gói sẵn trong app (đường dẫn asset). Ưu tiên hơn [imageUrl].
+  /// Ảnh đóng gói sẵn trong app (đường dẫn asset), ghép theo tên. Chỉ là dự phòng:
+  /// [imageUrl] admin tải lên được ưu tiên (xem `artifactPicture`).
   /// Dùng cho thumbnail và ảnh thường.
   final String? imageAsset;
 

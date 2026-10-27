@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/mock_data.dart';
+import '../../l10n/l10n.dart';
 import '../../services/qr_code.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
@@ -62,9 +63,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            errorSnackBar(
-              'Mã QR này không phải mã hiện vật của SmartHeritage.',
-            ),
+            errorSnackBar(context.l10n.qrNotOurs),
           );
       }
     }
@@ -76,11 +75,11 @@ class _QrScanScreenState extends State<QrScanScreen> {
     VisitHistoryController.instance.recordBeaconVisit(artifact);
     if (!mounted) return;
     // Thay màn quét: bấm back từ trang hiện vật về thẳng nơi đã mở máy quét.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => ArtifactDetailScreen(artifact: artifact),
-      ),
-    );
+    // Khách huỷ đăng nhập thì quay lại máy quét, quét tiếp được.
+    final opened = await openArtifactDetail(context, artifact, replace: true);
+    if (opened || !mounted) return;
+    _handled = false;
+    await _controller.start();
   }
 
   @override
@@ -91,12 +90,12 @@ class _QrScanScreenState extends State<QrScanScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: const Text('Quét mã QR'),
+        title: Text(context.l10n.scanQrTitle),
         actions: [
           ValueListenableBuilder(
             valueListenable: _controller,
             builder: (context, state, _) => IconButton(
-              tooltip: 'Đèn pin',
+              tooltip: context.l10n.qrTorch,
               onPressed: state.torchState == TorchState.unavailable
                   ? null
                   : _controller.toggleTorch,
@@ -144,12 +143,12 @@ class _ScanFrame extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Text(
-                'Đưa mã QR trên bảng giới thiệu hiện vật vào khung',
+                context.l10n.qrAimHint,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 14.5),
+                style: const TextStyle(color: Colors.white, fontSize: 14.5),
               ),
             ),
           ],
@@ -183,9 +182,8 @@ class _CameraError extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 denied
-                    ? 'Ứng dụng chưa được dùng camera. Hãy bật quyền Camera '
-                          'cho SmartHeritage trong Cài đặt của máy.'
-                    : 'Không mở được camera. Thử đóng màn này rồi mở lại.',
+                    ? context.l10n.qrCameraDenied
+                    : context.l10n.qrCameraFailed,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
@@ -196,7 +194,7 @@ class _CameraError extends StatelessWidget {
                   side: const BorderSide(color: Colors.white54),
                 ),
                 onPressed: () => Navigator.of(context).maybePop(),
-                child: const Text('Đóng'),
+                child: Text(context.l10n.close),
               ),
             ],
           ),

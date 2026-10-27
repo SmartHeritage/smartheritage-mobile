@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>513399865384-mfc7fm3ate0kolvtd7teu55fnp95dkge.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.513399865384-mfc7fm3ate0kolvtd7teu55fnp95dkge</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCkvIXdEa9qM4Cmn1jOpuMLzJm25KvFyBc</string>
+	<key>GCM_SENDER_ID</key>
+	<string>513399865384</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.smartheritage.smartheritage</string>
+	<key>PROJECT_ID</key>
+	<string>smart-heritage-e592f</string>
+	<key>STORAGE_BUCKET</key>
+	<string>smart-heritage-e592f.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:513399865384:ios:37b25b1d691e87a350351d</string>
+</dict>
+</plist>

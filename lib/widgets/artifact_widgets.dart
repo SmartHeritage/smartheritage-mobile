@@ -2,11 +2,47 @@ import 'package:flutter/material.dart';
 
 import '../data/favorite_repository.dart';
 import '../data/mock_data.dart';
+import '../l10n/l10n.dart';
 import '../screens/artifact/artifact_detail_screen.dart';
 import '../state/auth_state.dart';
 import '../theme/app_theme.dart';
 
-/// Ảnh đại diện hiện vật (placeholder gradient + icon).
+/// Ảnh của hiện vật theo thứ tự ưu tiên: ảnh đại diện admin tải lên ([Artifact.imageUrl])
+/// → ảnh đóng gói sẵn trong app (ghép theo tên, chỉ còn làm dự phòng) → [placeholder].
+///
+/// Ảnh tải lên lỗi (vd. file trên server đã mất, 404) thì cũng rơi về ảnh đóng gói rồi
+/// placeholder, không để ô trống. [asset] cho phép trang chi tiết dùng ảnh khổ lớn riêng.
+Widget artifactPicture(
+  Artifact artifact, {
+  required Widget Function() placeholder,
+  double? width,
+  double? height,
+  String? asset,
+  Alignment? alignment,
+}) {
+  final packaged = asset ?? artifact.imageAsset;
+  Widget fromAsset() => packaged != null && packaged.isNotEmpty
+      ? Image.asset(
+          packaged,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          alignment: alignment ?? artifact.imageAlignment,
+          errorBuilder: (_, _, _) => placeholder(),
+        )
+      : placeholder();
+  final url = artifact.imageUrl;
+  if (url == null || url.isEmpty) return fromAsset();
+  return Image.network(
+    url,
+    width: width,
+    height: height,
+    fit: BoxFit.cover,
+    errorBuilder: (_, _, _) => fromAsset(),
+  );
+}
+
+/// Ảnh đại diện hiện vật dạng ô vuông (danh sách, thẻ nhỏ).
 class ArtifactThumb extends StatelessWidget {
   const ArtifactThumb({
     super.key,
@@ -23,21 +59,15 @@ class ArtifactThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = artifact.imageAsset;
-    if (asset != null && asset.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: Image.asset(
-          asset,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          alignment: artifact.imageAlignment,
-          errorBuilder: (context, error, stack) => _placeholder(),
-        ),
-      );
-    }
-    return _placeholder();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: artifactPicture(
+        artifact,
+        width: size,
+        height: size,
+        placeholder: _placeholder,
+      ),
+    );
   }
 
   Widget _placeholder() {
@@ -73,31 +103,15 @@ class ArtifactImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = artifact.imageAsset;
-    if (asset != null && asset.isNotEmpty) {
-      return Image.asset(
-        asset,
-        height: height,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        alignment: artifact.imageAlignment,
-        errorBuilder: (context, error, stack) => _placeholder(),
-      );
-    }
-    final url = artifact.imageUrl;
-    if (url != null && url.isNotEmpty) {
-      return Image.network(
-        url,
-        height: height,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stack) => _placeholder(),
-      );
-    }
-    return _placeholder();
+    return artifactPicture(
+      artifact,
+      width: double.infinity,
+      height: height,
+      placeholder: () => _placeholder(context),
+    );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(BuildContext context) {
     return Container(
       height: height,
       width: double.infinity,
@@ -114,7 +128,7 @@ class ArtifactImage extends StatelessWidget {
           Icon(artifact.icon, color: Colors.white, size: 60),
           const SizedBox(height: 8),
           Text(
-            'Ảnh cập nhật sau',
+            context.l10n.artifactImageComingSoon,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.85),
               fontSize: 12.5,
@@ -152,6 +166,7 @@ class FavoriteButton extends StatelessWidget {
             if (!ok || !context.mounted) return;
 
             final messenger = ScaffoldMessenger.of(context);
+            final l10n = context.l10n;
             final wasFav = favorites.isFavorite(artifact.id);
             // toggle cập nhật giao diện ngay rồi mới gọi mạng; hỏng thì tự
             // hoàn tác và trả false.
@@ -160,14 +175,14 @@ class FavoriteButton extends StatelessWidget {
             messenger.hideCurrentSnackBar();
             if (!saved) {
               messenger.showSnackBar(
-                errorSnackBar('Không lưu được thay đổi, vui lòng thử lại.'),
+                errorSnackBar(l10n.saveFailedRetry),
               );
               return;
             }
             messenger.showSnackBar(SnackBar(
               content: Text(wasFav
-                  ? 'Đã xoá khỏi danh sách yêu thích'
-                  : 'Đã lưu vào danh sách yêu thích'),
+                  ? l10n.favoriteRemoved
+                  : l10n.favoriteAdded),
               duration: const Duration(seconds: 1),
             ));
           },
@@ -198,9 +213,7 @@ class ArtifactListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ArtifactDetailScreen(artifact: artifact),
-      )),
+      onTap: () => openArtifactDetail(context, artifact),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -378,7 +391,7 @@ class SectionHeader extends StatelessWidget {
           ),
         ),
         if (onSeeAll != null)
-          TextButton(onPressed: onSeeAll, child: const Text('Xem tất cả')),
+          TextButton(onPressed: onSeeAll, child: Text(context.l10n.seeAll)),
       ],
     );
   }

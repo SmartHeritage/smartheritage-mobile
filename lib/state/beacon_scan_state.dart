@@ -47,8 +47,19 @@ class BeaconScanController extends ChangeNotifier {
   /// riêng [awayThreshold] không đủ để im.
   static const Duration repeatCooldown = Duration(minutes: 5);
 
+  /// Bản V2 cho khách tự chọn khi một beacon phục vụ nhiều hiện vật; V1 giữ
+  /// cách cũ (app tự chọn hiện vật có thuyết minh rồi phát luôn). Gán được
+  /// trong test vì `flutter test` không build với HOME_V2.
+  @visibleForTesting
+  static bool askToChoose = const bool.fromEnvironment('HOME_V2');
+
   bool _isScanning = false;
   Artifact? _detected;
+  List<Artifact> _detectedChoices = const [];
+
+  /// Nguồn của lượt quét gần nhất (`beacon`/`manual`) — lượt ghi lại khi khách
+  /// chọn hiện vật phải cùng nguồn với lượt ghé.
+  String _lastSource = 'beacon';
   Timer? _timer;
 
   /// Bộ quét Bluetooth đang chạy; `null` khi tắt hoặc đang dùng bộ quét giả.
@@ -101,6 +112,11 @@ class BeaconScanController extends ChangeNotifier {
   /// Hiện vật beacon vừa phát hiện, đang chờ màn hình mở sheet giới thiệu.
   /// Bên hiển thị phải gọi [consumeDetection] sau khi xử lý.
   Artifact? get detected => _detected;
+
+  /// Các hiện vật của beacon vừa phát hiện khi beacon đó phục vụ từ hai hiện
+  /// vật trở lên (chỉ bản V2) — khách chọn trước, app không tự phát. Rỗng thì
+  /// cứ theo [detected] như cũ. Xoá cùng [consumeDetection].
+  List<Artifact> get detectedChoices => _detectedChoices;
 
   /// Vùng beacon khách đang đứng — để bản đồ tô sáng "Bạn đang ở khu vực
   /// Beacon …". Backend không định vị người dùng, nên đây là toàn bộ những gì
@@ -178,7 +194,7 @@ class BeaconScanController extends ChangeNotifier {
         (a) => a.hasAudio,
         orElse: () => artifacts.first,
       );
-      onBeaconSeen(artifact, beacon: candidate);
+      onBeaconSeen(artifact, beacon: candidate, choices: artifacts);
       return;
     }
   }
@@ -215,7 +231,9 @@ class BeaconScanController extends ChangeNotifier {
     if (!_isScanning) return;
     if (sighting != null) {
       onBeaconSeen(sighting.artifact,
-          beacon: sighting.beacon, source: 'manual');
+          beacon: sighting.beacon,
+          source: 'manual',
+          choices: sighting.choices);
       return;
     }
     final artifact = _pickArtifact();
@@ -238,12 +256,13 @@ class BeaconScanController extends ChangeNotifier {
     try {
       final candidates = await BeaconRepository.instance.resolve(heard);
       final catalog = ArtifactRepository.instance;
-      final sightings = <_Sighting>[
-        for (final c in candidates.where((c) => c.resolved))
-          for (final id in c.artifactIds)
-            if (catalog.tryById(id) case final artifact?)
-              _Sighting(artifact, c),
-      ];
+      final sightings = <_Sighting>[];
+      for (final c in candidates.where((c) => c.resolved)) {
+        final artifacts = [for (final id in c.artifactIds) ?catalog.tryById(id)];
+        for (final artifact in artifacts) {
+          sightings.add(_Sighting(artifact, c, artifacts));
+        }
+      }
       if (sightings.isEmpty) return null;
       // Cùng ưu tiên với bản cũ: hiện vật có thuyết minh trước.
       return sightings.firstWhere(
@@ -266,18 +285,27 @@ class BeaconScanController extends ChangeNotifier {
   /// [beacon] là beacon đã phát tín hiệu (đã resolve qua backend) — có thì
   /// lượt ghé được gửi lên backend (`POST /scans`), kèm [artifact] làm hiện
   /// vật được chọn, và vùng beacon đó thành [currentZone].
+  ///
+  /// [choices] là mọi hiện vật beacon đó phục vụ (có trong danh mục). Từ hai
+  /// trở lên thì ở V2 [artifact] chỉ làm khoá chống báo trùng: khách tự chọn
+  /// qua [detectedChoices], lượt ghé gửi lên chưa kèm hiện vật (backend vẫn
+  /// đếm mức đông) và [reportChoice] gửi bổ sung khi khách chọn.
   void onBeaconSeen(
     Artifact artifact, {
     BeaconCandidate? beacon,
     String source = 'beacon',
+    List<Artifact> choices = const [],
   }) {
     if (!_isScanning) return;
     final now = _clock();
     final lastSeen = _lastSeenAt[artifact.id];
     _lastSeenAt[artifact.id] = now;
 
+    final ask = askToChoose && choices.length > 1;
     if (beacon != null) {
-      _reportScan(artifact, beacon.identity, source, now);
+      _lastSource = source;
+      _reportScan(artifact, beacon.identity, source, now,
+          withArtifact: !ask);
       final zoneChanged = currentZone?.beaconId != beacon.beaconId;
       _zone = beacon;
       _zoneSeenAt = now;
@@ -294,6 +322,7 @@ class BeaconScanController extends ChangeNotifier {
 
     _announcedAt[artifact.id] = now;
     _detected = artifact;
+    _detectedChoices = ask ? List.unmodifiable(choices) : const [];
     notifyListeners();
   }
 
@@ -301,15 +330,29 @@ class BeaconScanController extends ChangeNotifier {
     Artifact artifact,
     BeaconIdentity beacon,
     String source,
-    DateTime now,
-  ) {
+    DateTime now, {
+    bool withArtifact = true,
+  }) {
     final last = _scannedAt[artifact.id];
     if (last != null && now.difference(last) < presenceInterval) return;
     _scannedAt[artifact.id] = now;
     // Không chờ, không báo lỗi: hỏng một lượt ghi thì mất một dòng thống kê,
     // còn khách vẫn phải thấy sheet giới thiệu ngay.
     BeaconRepository.instance
-        .recordScan(beacon, artifactId: artifact.id, source: source)
+        .recordScan(beacon,
+            artifactId: withArtifact ? artifact.id : null, source: source)
+        .catchError((Object _) {});
+  }
+
+  /// Khách vừa chọn [artifact] trong danh sách hiện vật của beacon: gửi một
+  /// lượt ghé kèm hiện vật để backend ghi đúng lịch sử tham quan (lượt tự
+  /// động lúc phát hiện chưa biết khách xem hiện vật nào).
+  void reportChoice(Artifact artifact) {
+    final zone = _zone;
+    if (!_isScanning || zone == null) return;
+    if (!zone.artifactIds.contains(artifact.id)) return;
+    BeaconRepository.instance
+        .recordScan(zone.identity, artifactId: artifact.id, source: _lastSource)
         .catchError((Object _) {});
   }
 
@@ -339,6 +382,7 @@ class BeaconScanController extends ChangeNotifier {
     _resolveRetryAt = null;
     _isScanning = false;
     _detected = null;
+    _detectedChoices = const [];
     _lastSeenAt.clear();
     _announcedAt.clear();
     _scannedAt.clear();
@@ -359,7 +403,10 @@ class BeaconScanController extends ChangeNotifier {
 
   /// Xoá hiện vật đã phát hiện mà không notify — tránh vòng lặp rebuild khi
   /// bên gọi đang ở trong chính callback của listener.
-  void consumeDetection() => _detected = null;
+  void consumeDetection() {
+    _detected = null;
+    _detectedChoices = const [];
+  }
 
   /// Đồng hồ giả cho test: mô phỏng "đi khỏi rồi vài phút sau quay lại" mà
   /// không phải chờ thật. `tester.pump` chỉ đẩy thời gian của framework chứ
@@ -376,8 +423,11 @@ class BeaconScanController extends ChangeNotifier {
 }
 
 class _Sighting {
-  const _Sighting(this.artifact, this.beacon);
+  const _Sighting(this.artifact, this.beacon, this.choices);
 
   final Artifact artifact;
   final BeaconCandidate beacon;
+
+  /// Mọi hiện vật [beacon] phục vụ, gồm cả [artifact].
+  final List<Artifact> choices;
 }

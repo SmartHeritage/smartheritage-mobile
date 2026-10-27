@@ -7,6 +7,7 @@ import '../../data/artifact_repository.dart';
 import '../../data/attraction.dart';
 import '../../data/crowd_repository.dart';
 import '../../data/mock_data.dart';
+import '../../l10n/l10n.dart';
 import '../../services/location_service.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
@@ -136,8 +137,8 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
     final crowd = CrowdRepository.instance.forBeacon(beacon.id);
     if (crowd == null) return null;
     return crowd.activeDevices == 0
-        ? 'Đang vắng khách'
-        : '~${crowd.activeDevices} khách quanh đây';
+        ? context.l10n.crowdQuiet
+        : context.l10n.crowdAroundHere(crowd.activeDevices);
   }
 
   // ---- camera --------------------------------------------------------------
@@ -211,11 +212,9 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
 
   void _showLocationMessage(LocationStatus status) {
     final msg = switch (status) {
-      LocationStatus.serviceDisabled =>
-        'Vui lòng bật GPS/Vị trí trên thiết bị rồi thử lại.',
-      LocationStatus.deniedForever =>
-        'Quyền vị trí đang bị chặn. Hãy bật lại trong Cài đặt của máy.',
-      _ => 'Ứng dụng cần quyền vị trí để định vị bạn trên bản đồ.',
+      LocationStatus.serviceDisabled => context.l10n.locationServiceOff,
+      LocationStatus.deniedForever => context.l10n.locationDeniedForever,
+      _ => context.l10n.locationNeeded,
     };
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -247,12 +246,10 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
       body: Stack(
         children: [
           if (!hasPoints)
-            const MapMessage(
+            MapMessage(
               icon: Icons.location_off_outlined,
-              title: 'Chưa có vị trí trên bản đồ',
-              text:
-                  'Điểm tham quan này chưa có hiện vật hay beacon nào được '
-                  'đặt toạ độ.',
+              title: context.l10n.mapNoLocationTitle,
+              text: context.l10n.mapNoLocationText,
             )
           else
             HeritageMap(
@@ -305,7 +302,7 @@ class _AttractionMapScreenState extends State<AttractionMapScreen> {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              'Bạn đang ở khu vực ${here.name}',
+                              context.l10n.mapYouAreInZone(here.name),
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
@@ -439,7 +436,7 @@ class _MapArtifactCard extends StatelessWidget {
   final VoidCallback onClose;
 
   /// Chuỗi khoảng cách từ người dùng tới hiện vật (nếu đã có GPS).
-  String get _distanceLabel {
+  String _distanceLabel(BuildContext context) {
     if (userPos == null) return artifact.zone;
     final meters = LocationService.distanceMeters(
       userPos!.latitude,
@@ -450,7 +447,7 @@ class _MapArtifactCard extends StatelessWidget {
     final dist = meters < 1000
         ? '${meters.round()}m'
         : '${(meters / 1000).toStringAsFixed(1)}km';
-    return '${artifact.zone} · cách bạn ~$dist';
+    return context.l10n.mapDistanceFromYou(artifact.zone, dist);
   }
 
   @override
@@ -491,7 +488,7 @@ class _MapArtifactCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _distanceLabel,
+                      _distanceLabel(context),
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: AppColors.textSecondary,
@@ -546,25 +543,24 @@ class _MapArtifactCard extends StatelessWidget {
                     minimumSize: const Size.fromHeight(44),
                   ),
                   icon: const Icon(Icons.directions_walk, size: 19),
-                  label: const Text(
-                    'Chỉ đường',
-                    style: TextStyle(fontSize: 14),
+                  label: Text(
+                    context.l10n.mapDirections,
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ArtifactDetailScreen(artifact: artifact),
-                    ),
-                  ),
+                  onPressed: () => openArtifactDetail(context, artifact),
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(44),
                   ),
                   icon: const Icon(Icons.info_outline, size: 19),
-                  label: const Text('Chi tiết', style: TextStyle(fontSize: 14)),
+                  label: Text(
+                    context.l10n.details,
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ],

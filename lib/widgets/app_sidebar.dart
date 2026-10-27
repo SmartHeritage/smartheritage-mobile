@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_info.dart';
 import '../screens/help/help_screen.dart';
 import '../screens/history/history_screen.dart';
+import '../screens/map/map_screen.dart';
 import '../screens/profile/language_screen.dart';
 import '../state/auth_state.dart';
 import '../state/beacon_scan_state.dart';
@@ -33,6 +34,13 @@ class AppSidebar extends StatelessWidget {
                   children: [
                     const _ScanToggle(),
                     const Divider(height: 1, indent: 16, endIndent: 16),
+                    // Tab Bản đồ đã nhường chỗ cho Danh sách nghe (2026-10-21)
+                    // — V1 không có lưới tính năng nên mở bản đồ từ đây.
+                    _Item(
+                      icon: Icons.map_outlined,
+                      label: 'Bản đồ',
+                      onTap: () => _open(context, const MapScreen()),
+                    ),
                     _Item(
                       icon: Icons.history,
                       label: 'Lịch sử tham quan',

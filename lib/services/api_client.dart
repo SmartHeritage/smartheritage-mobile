@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
+import '../l10n/l10n.dart';
 import 'token_store.dart';
 
 /// Lỗi trả về từ backend hoặc lỗi mạng, đã gói thành thông điệp tiếng Việt
@@ -89,11 +90,11 @@ class ApiClient {
           .timeout(AppConfig.requestTimeout);
       response = await http.Response.fromStream(streamed);
     } on TimeoutException {
-      throw ApiException('Máy chủ phản hồi quá lâu.', isNetwork: true);
+      throw ApiException(appStrings.serverTimeout, isNetwork: true);
     } on SocketException {
-      throw ApiException('Không kết nối được máy chủ.', isNetwork: true);
+      throw ApiException(appStrings.serverUnreachable, isNetwork: true);
     } on http.ClientException {
-      throw ApiException('Không kết nối được máy chủ.', isNetwork: true);
+      throw ApiException(appStrings.serverUnreachable, isNetwork: true);
     }
 
     // 401 kèm refresh token còn sống → làm mới rồi gửi lại đúng một lần.
@@ -138,11 +139,11 @@ class ApiClient {
   }
 
   String _genericError(int status) => switch (status) {
-        400 => 'Dữ liệu gửi lên không hợp lệ.',
-        401 => 'Phiên đăng nhập đã hết hạn.',
-        403 => 'Bạn không có quyền thực hiện thao tác này.',
-        404 => 'Không tìm thấy dữ liệu.',
-        _ => 'Máy chủ gặp sự cố ($status).',
+        400 => appStrings.error400,
+        401 => appStrings.error401,
+        403 => appStrings.error403,
+        404 => appStrings.error404,
+        _ => appStrings.errorServer(status),
       };
 
   Future<bool> _refreshSession() {

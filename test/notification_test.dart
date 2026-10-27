@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smartheritage/data/mock_data.dart';
+import 'package:smartheritage/screens/auth/login_screen.dart';
 import 'package:smartheritage/screens/home/home_screen.dart';
+import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/state/notification_state.dart';
 import 'package:smartheritage/widgets/app_sidebar.dart';
 
@@ -61,6 +63,8 @@ void main() {
 
   testWidgets('bấm thông báo có hiện vật thì mở trang chi tiết',
       (tester) async {
+    AuthController.instance.setTestSession();
+    addTearDown(AuthController.instance.resetForTest);
     await tester.pumpWidget(_harness());
     await tester.tap(find.byIcon(Icons.notifications_outlined));
     await tester.pumpAndSettle();
@@ -71,6 +75,26 @@ void main() {
 
     expect(find.text('Giới thiệu'), findsOneWidget);
     expect(store.isRead('n1'), isTrue);
+  });
+
+  testWidgets('khách bấm thông báo có hiện vật thì phải đăng nhập trước',
+      (tester) async {
+    await tester.pumpWidget(_harness());
+    await tester.tap(find.byIcon(Icons.notifications_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Bạn đang ở gần Ấn vàng triều Nguyễn'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.text('Giới thiệu'), findsNothing);
+
+    // Huỷ đăng nhập thì quay về đúng chỗ cũ, không vào trang chi tiết.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.text('Giới thiệu'), findsNothing);
+    expect(find.text('Thông báo'), findsOneWidget);
   });
 
   testWidgets('thông báo không gắn hiện vật chỉ đánh dấu đã đọc',

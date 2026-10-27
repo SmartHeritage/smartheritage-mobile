@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartheritage/screens/auth/login_screen.dart';
 import 'package:smartheritage/screens/profile/profile_screen.dart';
 import 'package:smartheritage/services/api_client.dart';
+import 'package:smartheritage/services/google_auth.dart';
 import 'package:smartheritage/services/token_store.dart';
 import 'package:smartheritage/state/auth_state.dart';
 import 'package:smartheritage/theme/app_theme.dart';
@@ -56,6 +57,22 @@ Future<void> _fillLoginForm(WidgetTester tester) async {
   await tester.enterText(fields.at(1), 'secret12');
 }
 
+/// Google + Firebase giả: [error] khác null thì ném lỗi, không thì trả token.
+class _FakeGoogleAuth extends GoogleAuth {
+  _FakeGoogleAuth({this.error});
+
+  final ApiException? error;
+
+  @override
+  Future<String?> signIn() async {
+    if (error != null) throw error!;
+    return 'firebase-token';
+  }
+
+  @override
+  Future<void> signOut() async {}
+}
+
 void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -64,6 +81,7 @@ void main() {
 
   tearDown(() {
     AuthController.instance = AuthController();
+    GoogleAuth.instance = GoogleAuth();
   });
 
   testWidgets('đăng nhập thành công thì hiện snackbar', (tester) async {
@@ -127,8 +145,12 @@ void main() {
     expect(_snackBarColor(tester), AppColors.danger);
   });
 
-  testWidgets('nút Google báo chưa hỗ trợ bằng snackbar đỏ', (tester) async {
-    _installAuth(MockClient((_) async => _json(_session())));
+  testWidgets('đăng nhập Google thành công thì rời màn đăng nhập', (tester) async {
+    GoogleAuth.instance = _FakeGoogleAuth();
+    _installAuth(MockClient((req) async {
+      if (req.url.path.endsWith('/favorites')) return _json([]);
+      return _json(_session());
+    }));
     await tester.pumpWidget(_harness(const LoginScreen()));
 
     // Nút nằm cuối trang, phải cuộn tới trước khi bấm.
@@ -138,7 +160,23 @@ void main() {
     await tester.tap(google);
     await tester.pumpAndSettle();
 
-    expect(find.text('Đăng nhập Google chưa được hỗ trợ'), findsOneWidget);
+    expect(AuthController.instance.isLoggedIn, isTrue);
+    expect(find.text('Đăng nhập thành công'), findsOneWidget);
+  });
+
+  testWidgets('đăng nhập Google lỗi thì báo bằng snackbar đỏ', (tester) async {
+    GoogleAuth.instance =
+        _FakeGoogleAuth(error: ApiException('Không đăng nhập được bằng Google.'));
+    _installAuth(MockClient((_) async => _json(_session())));
+    await tester.pumpWidget(_harness(const LoginScreen()));
+
+    final google = find.widgetWithText(OutlinedButton, 'Tiếp tục với Google');
+    await tester.ensureVisible(google);
+    await tester.pumpAndSettle();
+    await tester.tap(google);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Không đăng nhập được bằng Google.'), findsOneWidget);
     expect(_snackBarColor(tester), AppColors.danger);
     expect(AuthController.instance.isLoggedIn, isFalse);
   });

@@ -1,0 +1,8 @@
+# Dịch giao diện app: sửa chữ trong lib/l10n/app_*.arb, `flutter pub get` /
+# `flutter run` tự sinh lại lớp AppLocalizations.
+arb-dir: lib/l10n
+template-arb-file: app_vi.arb
+output-dir: lib/l10n
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: true

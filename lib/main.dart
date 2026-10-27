@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'data/artifact_repository.dart';
 import 'data/news_repository.dart';
+import 'l10n/l10n.dart';
 import 'screens/splash_screen.dart';
 import 'services/mapbox_config.dart';
 import 'state/auth_state.dart';
@@ -38,11 +39,19 @@ class SmartHeritageApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Smart Heritage',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      home: const SplashScreen(),
+    // Đổi ngôn ngữ thì đổi luôn giao diện (chữ trên nút, tiêu đề, widget hệ
+    // thống) — xem LanguageController.uiLocale.
+    return ListenableBuilder(
+      listenable: LanguageController.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'Smart Heritage',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        locale: LanguageController.instance.uiLocale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const SplashScreen(),
+      ),
     );
   }
 }

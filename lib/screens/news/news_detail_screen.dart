@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/news_repository.dart';
+import '../../l10n/l10n.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/rich_text_content.dart';
@@ -55,7 +56,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  tooltip: 'Quay lại',
+                  tooltip: context.l10n.back,
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
@@ -137,19 +138,18 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                           // 404: bài vừa bị gỡ hoặc chưa có bản thứ tiếng này.
                           message: switch (snap.error) {
                             ApiException(statusCode: 404) =>
-                              'Bài viết này không còn hoặc chưa có bản cho '
-                                  'ngôn ngữ bạn chọn.',
+                              context.l10n.newsUnavailable,
                             ApiException(:final message) => message,
-                            _ => 'Không tải được nội dung bài viết.',
+                            _ => context.l10n.newsLoadFailed,
                           },
                           onRetry: _retry,
                         );
                       }
                       final html = snap.data ?? '';
                       if (html.isEmpty) {
-                        return const Text(
-                          'Bài viết chưa có nội dung.',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        return Text(
+                          context.l10n.newsEmpty,
+                          style: const TextStyle(color: AppColors.textSecondary),
                         );
                       }
                       return RichTextContent(html: html);
@@ -187,7 +187,7 @@ class _BodyError extends StatelessWidget {
         TextButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh),
-          label: const Text('Thử lại'),
+          label: Text(context.l10n.retry),
         ),
       ],
     );

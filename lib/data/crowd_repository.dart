@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../l10n/l10n.dart';
 import '../services/api_client.dart';
 
 /// Mức đông người quanh một hiện vật, ước lượng từ số máy đang ở trong vùng
@@ -20,11 +21,11 @@ class CrowdInfo {
   final String? beaconName;
 
   String get label {
-    if (activeDevices == 0) return 'Đang vắng khách';
-    final where = isSharedZone && beaconName != null
-        ? 'quanh khu vực $beaconName'
-        : 'đang ở đây';
-    return '~$activeDevices khách $where';
+    final l10n = appStrings;
+    if (activeDevices == 0) return l10n.crowdQuiet;
+    return isSharedZone && beaconName != null
+        ? l10n.crowdAroundZone(activeDevices, beaconName!)
+        : l10n.crowdHere(activeDevices);
   }
 }
 
@@ -42,8 +43,8 @@ class AttractionCrowd {
   bool get isMeasurable => beaconCount > 0;
 
   String get label => activeDevices == 0
-      ? 'Đang vắng khách'
-      : '~$activeDevices khách đang ở khu này';
+      ? appStrings.crowdQuiet
+      : appStrings.crowdInArea(activeDevices);
 }
 
 /// Đọc `GET /crowd/beacons` và `GET /attractions/:id/crowd` — public, chỉ đọc.

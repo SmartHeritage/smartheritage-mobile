@@ -122,6 +122,40 @@ void main() {
     expect(find.text('Nghe thuyết minh âm thanh'), findsNothing);
   });
 
+  testWidgets('cuộn xuống thì tên hiện vật và thanh tab vẫn ghim, không bị che',
+      (tester) async {
+    tester.view.physicalSize = const Size(402 * 3, 874 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    final artifact = MockData.artifacts.first;
+    await tester.pumpWidget(_harness(artifact));
+    await tester.pump();
+
+    // Lúc đầu: dòng đầu tab Giới thiệu nằm dưới thanh tab, không bị đè.
+    final tabBottom = tester.getBottomLeft(find.byType(TabBar)).dy;
+    expect(
+      tester.getTopLeft(find.text('Giới thiệu chung')).dy,
+      greaterThanOrEqualTo(tabBottom),
+    );
+
+    await tester.drag(find.text('Giới thiệu chung'), const Offset(0, -600));
+    await tester.pumpAndSettle();
+
+    // Ảnh co lại hết; tên và tab vẫn trên màn, nằm dưới thanh trên (không bị che).
+    final appBarBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
+    final nameTop = tester.getTopLeft(find.text(artifact.name)).dy;
+    // Dưới hàng nút (toolbar cao kToolbarHeight; test không có thanh trạng thái).
+    expect(nameTop, greaterThanOrEqualTo(kToolbarHeight));
+    expect(
+      tester.getTopLeft(find.byType(TabBar)).dy,
+      greaterThan(nameTop),
+    );
+    expect(tester.getBottomLeft(find.byType(TabBar)).dy,
+        lessThanOrEqualTo(appBarBottom + 1));
+    await tester.tap(find.text('Hình ảnh'));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('tab Giới thiệu không còn nút đánh giá', (tester) async {
     await tester.pumpWidget(_harness(MockData.artifacts.first));
     await tester.pump();

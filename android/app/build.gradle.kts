@@ -43,3 +43,10 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Thiếu google-services.json (tải từ Firebase, đặt ở android/app/) thì plugin
+// này làm hỏng cả bản build — khi đó bỏ qua để app vẫn build được, chỉ riêng
+// đăng nhập Google báo lỗi lúc chạy.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}

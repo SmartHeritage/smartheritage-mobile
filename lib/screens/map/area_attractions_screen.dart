@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../data/artifact_repository.dart';
 import '../../data/attraction.dart';
 import '../../data/crowd_repository.dart';
+import '../../l10n/l10n.dart';
 import '../../state/beacon_scan_state.dart';
 import '../../theme/app_theme.dart';
 import 'attraction_map_screen.dart';
@@ -116,7 +117,7 @@ class _AreaAttractionsScreenState extends State<AreaAttractionsScreen> {
         if (_areaId == null || a.tourismAreaId == _areaId) a,
     ];
     if (list.isNotEmpty) return list;
-    return const [Attraction(id: '', name: 'Tất cả hiện vật')];
+    return [Attraction(id: '', name: context.l10n.mapAllArtifacts)];
   }
 
   int _artifactCount(Attraction attraction) => attraction.id.isEmpty
@@ -166,7 +167,7 @@ class _AreaAttractionsScreenState extends State<AreaAttractionsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.area?.name ?? 'Bản đồ tham quan',
+          widget.area?.name ?? context.l10n.mapScreenTitle,
           overflow: TextOverflow.ellipsis,
         ),
       ),
@@ -185,7 +186,7 @@ class _AreaAttractionsScreenState extends State<AreaAttractionsScreen> {
                     ? _attractionList(
                         attractions,
                         hereId,
-                        hint: 'Chọn một khu vực để xem bản đồ',
+                        hint: context.l10n.mapPickArea,
                       )
                     : _floorList(_floors!, attractions, hereId),
               ),
@@ -204,7 +205,7 @@ class _AreaAttractionsScreenState extends State<AreaAttractionsScreen> {
         if (a.id.isNotEmpty && !floorIds.contains(a.floorId)) a,
     ];
     return [
-      const _Hint('Chọn tầng để xem sơ đồ khu vực'),
+      _Hint(context.l10n.mapPickFloor),
       for (final floor in floors) ...[
         _FloorButton(
           floor: floor,
@@ -219,7 +220,7 @@ class _AreaAttractionsScreenState extends State<AreaAttractionsScreen> {
       ],
       if (loose.isNotEmpty) ...[
         const SizedBox(height: 8),
-        ..._attractionList(loose, hereId, hint: 'Khu vực khác'),
+        ..._attractionList(loose, hereId, hint: context.l10n.mapOtherAreas),
       ],
     ];
   }
@@ -280,7 +281,9 @@ class _FloorButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isHere = hereId != null && attractions.any((a) => a.id == hereId);
     final count = attractions.length;
-    final base = floor.floorPlanUrl != null ? 'Sơ đồ tầng' : 'Bản đồ';
+    final base = floor.floorPlanUrl != null
+        ? context.l10n.mapFloorPlan
+        : context.l10n.navMap;
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
@@ -325,9 +328,7 @@ class _FloorButton extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      count == 0
-                          ? 'Chưa có khu vực · $base'
-                          : '$count khu vực · $base',
+                      '${context.l10n.mapAreaCount(count)} · $base',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -335,17 +336,17 @@ class _FloorButton extends StatelessWidget {
                     ),
                     if (isHere) ...[
                       const SizedBox(height: 6),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.bluetooth_searching,
                             size: 14,
                             color: AppColors.accent,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            'Bạn đang ở tầng này',
-                            style: TextStyle(
+                            context.l10n.mapOnThisFloor,
+                            style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: AppColors.accent,
@@ -434,9 +435,9 @@ class _AttractionButton extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       artifactCount == 0
-                          ? 'Chưa có hiện vật'
-                          : '$artifactCount hiện vật · '
-                                '${indoor ? 'Sơ đồ tầng' : 'Bản đồ'}',
+                          ? context.l10n.mapNoArtifacts
+                          : '${context.l10n.mapArtifactCount(artifactCount)} · '
+                                '${indoor ? context.l10n.mapFloorPlan : context.l10n.navMap}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -468,17 +469,17 @@ class _AttractionButton extends StatelessWidget {
                     ],
                     if (isHere) ...[
                       const SizedBox(height: 6),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.bluetooth_searching,
                             size: 14,
                             color: AppColors.accent,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            'Bạn đang ở đây',
-                            style: TextStyle(
+                            context.l10n.mapYouAreHere,
+                            style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: AppColors.accent,

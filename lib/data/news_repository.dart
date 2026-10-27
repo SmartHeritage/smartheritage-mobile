@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../l10n/l10n.dart';
 import '../services/api_client.dart';
 import 'mock_data.dart';
 import 'tiptap.dart';
@@ -129,7 +130,7 @@ class NewsRepository extends ChangeNotifier {
       (lang) => {'lang': lang},
     );
     if (data is! Map<String, dynamic>) {
-      throw ApiException('Máy chủ trả về dữ liệu không hợp lệ.');
+      throw ApiException(appStrings.invalidServerData);
     }
     return tiptapToHtml(data['contentJson']);
   }

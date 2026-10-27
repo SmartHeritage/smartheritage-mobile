@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/mock_data.dart';
+import '../../l10n/l10n.dart';
 import '../../state/visit_history_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
@@ -25,7 +26,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final store = VisitHistoryController.instance;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lịch sử tham quan'),
+        title: Text(context.l10n.historyTitle),
         actions: [
           ListenableBuilder(
             listenable: store,
@@ -75,7 +76,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 for (final record in entry.value) ...[
                   ArtifactListTile(
                     artifact: record.artifact,
-                    subtitle: 'iBeacon phát hiện lúc ${record.timeLabel}',
+                    subtitle: context.l10n.historyDetectedAt(record.timeLabel),
                     trailing: const Icon(Icons.chevron_right,
                         color: AppColors.textSecondary),
                   ),
@@ -95,14 +96,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Xoá lịch sử'),
+        title: Text(context.l10n.historyClearTitle),
         content: Text(VisitHistoryController.instance.isAccountHistory
-            ? 'Xoá toàn bộ lịch sử tham quan của tài khoản này?'
-            : 'Xoá toàn bộ lịch sử tham quan trên thiết bị này?'),
+            ? context.l10n.historyClearAccount
+            : context.l10n.historyClearDevice),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Huỷ'),
+            child: Text(context.l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -110,7 +111,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               VisitHistoryController.instance.clear();
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Xoá'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -132,7 +133,7 @@ class _StatsRow extends StatelessWidget {
           child: _StatTile(
             icon: Icons.museum_outlined,
             value: stats.artifactsViewed,
-            label: 'Hiện vật đã xem',
+            label: context.l10n.historyStatArtifacts,
           ),
         ),
         const SizedBox(width: 10),
@@ -140,7 +141,7 @@ class _StatsRow extends StatelessWidget {
           child: _StatTile(
             icon: Icons.event_available_outlined,
             value: stats.visitDays,
-            label: 'Ngày tham quan',
+            label: context.l10n.historyStatDays,
           ),
         ),
         const SizedBox(width: 10),
@@ -148,7 +149,7 @@ class _StatsRow extends StatelessWidget {
           child: _StatTile(
             icon: Icons.place_outlined,
             value: stats.attractionsVisited,
-            label: 'Khu đã ghé',
+            label: context.l10n.historyStatAreas,
           ),
         ),
       ],
@@ -223,19 +224,19 @@ class _EmptyHistory extends StatelessWidget {
                   size: 44, color: AppColors.accent),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Chưa có lịch sử tham quan',
-              style: TextStyle(
+            Text(
+              context.l10n.historyEmptyTitle,
+              style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Khi bạn đến gần một hiện vật, iBeacon sẽ\ntự động ghi lại vào đây',
+            Text(
+              context.l10n.historyEmptyMessage,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ],
         ),

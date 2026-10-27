@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/artifact_repository.dart';
 import '../../data/attraction.dart';
+import '../../l10n/l10n.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../artifact/artifact_detail_screen.dart';
@@ -69,7 +70,7 @@ class _FloorPlanScreenState extends State<FloorPlanScreen> {
             return _Message(
               text: error is ApiException
                   ? error.message
-                  : 'Không tải được sơ đồ.',
+                  : context.l10n.mapPlanLoadFailed,
               onRetry: () => setState(_load),
             );
           }
@@ -80,7 +81,7 @@ class _FloorPlanScreenState extends State<FloorPlanScreen> {
           }
           final url = map.attraction.floorPlanUrl;
           if (url == null || ratio <= 0) {
-            return const _Message(text: 'Điểm tham quan này chưa có sơ đồ tầng.');
+            return _Message(text: context.l10n.mapAttractionNoPlan);
           }
           return InteractiveViewer(
             maxScale: 5,
@@ -101,12 +102,8 @@ class _FloorPlanScreenState extends State<FloorPlanScreen> {
                             marker: m,
                             onTap: m.artifact == null
                                 ? null
-                                : () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => ArtifactDetailScreen(
-                                            artifact: m.artifact!),
-                                      ),
-                                    ),
+                                : () => openArtifactDetail(
+                                    context, m.artifact!),
                           ),
                         ),
                     ],
@@ -184,7 +181,7 @@ class _Message extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+              OutlinedButton(onPressed: onRetry, child: Text(context.l10n.retry)),
             ],
           ],
         ),

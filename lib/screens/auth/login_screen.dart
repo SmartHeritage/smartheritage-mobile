@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../services/api_client.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../main_shell.dart';
+import 'complete_phone_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,11 +42,12 @@ class _LoginScreenState extends State<LoginScreen> {
       // chết, còn messenger gốc của MaterialApp vẫn sống nên snackbar hiện
       // được ở màn hình vừa quay về.
       final messenger = ScaffoldMessenger.of(context);
+      final success = context.l10n.loginSuccess;
       _leaveLoginScreen();
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('Đăng nhập thành công')),
+          SnackBar(content: Text(success)),
         );
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -66,9 +69,34 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _notSupportedYet() {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(errorSnackBar('Đăng nhập Google chưa được hỗ trợ'));
+  Future<void> _loginWithGoogle() async {
+    setState(() => _busy = true);
+    try {
+      final ok = await AuthController.instance.signInWithGoogle();
+      if (!mounted) return;
+      if (!ok) {
+        // Huỷ màn chọn tài khoản — ở lại màn đăng nhập, không báo lỗi.
+        setState(() => _busy = false);
+        return;
+      }
+      // Google không cho số điện thoại → bắt nhập ngay. Bỏ ra thì màn kia đã
+      // đăng xuất, ở lại đây để chọn cách đăng nhập khác.
+      if (!await CompletePhoneScreen.ensure(context)) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      final success = context.l10n.loginSuccess;
+      _leaveLoginScreen();
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(success)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(errorSnackBar(e.message));
+    }
   }
 
   @override
@@ -106,32 +134,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Chào mừng trở lại!',
+                Text(
+                  context.l10n.loginWelcome,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Đăng nhập để đồng bộ lịch sử tham quan\nvà cá nhân hoá trải nghiệm của bạn',
+                Text(
+                  context.l10n.loginSubtitle,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14.5, color: AppColors.textSecondary),
+                  style: const TextStyle(fontSize: 14.5, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  decoration: const InputDecoration(
-                    hintText: 'Email',
-                    prefixIcon: Icon(Icons.mail_outline),
+                  decoration: InputDecoration(
+                    hintText: context.l10n.fieldEmail,
+                    prefixIcon: const Icon(Icons.mail_outline),
                   ),
                   validator: (v) => (v == null || !v.contains('@'))
-                      ? 'Vui lòng nhập email hợp lệ'
+                      ? context.l10n.invalidEmail
                       : null,
                 ),
                 const SizedBox(height: 16),
@@ -139,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   obscureText: _obscure,
                   decoration: InputDecoration(
-                    hintText: 'Mật khẩu',
+                    hintText: context.l10n.fieldPassword,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -152,14 +180,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Backend đặt tối thiểu 8 ký tự — chặn ngay ở đây để khỏi
                   // đi một vòng mạng chỉ để nhận lỗi 400.
                   validator: (v) => (v == null || v.length < 8)
-                      ? 'Mật khẩu tối thiểu 8 ký tự'
+                      ? context.l10n.passwordTooShort
                       : null,
                 ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {},
-                    child: const Text('Quên mật khẩu?'),
+                    child: Text(context.l10n.forgotPassword),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -174,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text('Đăng nhập'),
+                      : Text(context.l10n.login),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -183,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'hoặc tiếp tục với',
+                        context.l10n.orContinueWith,
                         style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary.withValues(alpha: 0.9),
@@ -195,9 +223,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
-                  // Trước đây nút này gọi thẳng _login và giả lập đăng nhập.
-                  // Auth đã chạy thật nên không thể fake được nữa.
-                  onPressed: _notSupportedYet,
+                  // Khoá chung với nút đăng nhập email: hai luồng cùng ghi
+                  // phiên, không cho chạy chồng.
+                  onPressed: _busy ? null : _loginWithGoogle,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.divider, width: 1.4),
                     foregroundColor: AppColors.textPrimary,
@@ -207,26 +235,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 22,
                     height: 22,
                   ),
-                  label: const Text(
-                    'Tiếp tục với Google',
-                    style: TextStyle(fontSize: 15),
+                  label: Text(
+                    context.l10n.continueWithGoogle,
+                    style: const TextStyle(fontSize: 15),
                   ),
                 ),
                 const SizedBox(height: 28),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'Chưa có tài khoản? ',
-                      style: TextStyle(color: AppColors.textSecondary),
+                    Text(
+                      context.l10n.noAccount,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const RegisterScreen()),
                       ),
-                      child: const Text(
-                        'Đăng ký ngay',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.registerNow,
+                        style: const TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                         ),

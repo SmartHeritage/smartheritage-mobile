@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../config.dart';
 import '../data/beacon_repository.dart';
+import '../l10n/l10n.dart';
 import 'location_service.dart';
 
 /// Một beacon nghe được trong một nhịp quét.
@@ -82,7 +83,7 @@ class IBeaconScanner implements BeaconSource {
       });
       return null;
     } on PlatformException catch (e) {
-      return 'Không khởi động được bộ quét beacon (${e.message ?? e.code}).';
+      return appStrings.beaconStartFailed(e.message ?? e.code);
     }
   }
 
@@ -93,11 +94,10 @@ class IBeaconScanner implements BeaconSource {
   Future<String?> _prepareIOS() async {
     switch (await LocationService.ensurePermission()) {
       case LocationStatus.serviceDisabled:
-        return 'Hãy bật Dịch vụ định vị trong Cài đặt để quét beacon.';
+        return appStrings.beaconLocationServiceOff;
       case LocationStatus.denied:
       case LocationStatus.deniedForever:
-        return 'Ứng dụng cần quyền vị trí để nhận tín hiệu beacon. '
-            'Hãy bật trong Cài đặt.';
+        return appStrings.beaconLocationNeeded;
       case LocationStatus.granted:
         break;
     }
@@ -117,13 +117,12 @@ class IBeaconScanner implements BeaconSource {
 
     final auth = await flutterBeacon.authorizationStatus;
     if (auth.value == 'DENIED' || auth.value == 'RESTRICTED') {
-      return 'Ứng dụng cần quyền vị trí để nhận tín hiệu beacon. '
-          'Hãy bật trong Cài đặt.';
+      return appStrings.beaconLocationNeeded;
     }
     if (!await flutterBeacon.checkLocationServicesIfEnabled) {
-      return 'Hãy bật Dịch vụ vị trí (GPS) — Android cần nó để quét beacon.';
+      return appStrings.beaconGpsOffAndroid;
     }
-    if (!ready) return 'Chưa khởi động được bộ quét beacon.';
+    if (!ready) return appStrings.beaconNotReady;
     return null;
   }
 
@@ -144,12 +143,10 @@ class IBeaconScanner implements BeaconSource {
   }
 
   String? _bluetoothProblem(BluetoothState state) => switch (state.value) {
-    'STATE_OFF' || 'STATE_TURNING_OFF' => 'Hãy bật Bluetooth để quét beacon.',
-    'STATE_UNAUTHORIZED' =>
-      'Ứng dụng chưa được phép dùng Bluetooth. Hãy bật trong Cài đặt.',
-    'STATE_UNSUPPORTED' => 'Thiết bị này không hỗ trợ Bluetooth Low Energy.',
-    'STATE_UNKNOWN' ||
-    'STATE_RESETTING' => 'Bluetooth chưa sẵn sàng. Hãy thử bật quét lại.',
+    'STATE_OFF' || 'STATE_TURNING_OFF' => appStrings.bluetoothOff,
+    'STATE_UNAUTHORIZED' => appStrings.bluetoothUnauthorized,
+    'STATE_UNSUPPORTED' => appStrings.bluetoothUnsupported,
+    'STATE_UNKNOWN' || 'STATE_RESETTING' => appStrings.bluetoothNotReady,
     _ => null,
   };
 

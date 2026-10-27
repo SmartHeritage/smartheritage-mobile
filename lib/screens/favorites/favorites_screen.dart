@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/favorite_repository.dart';
+import '../../l10n/l10n.dart';
 import '../../state/auth_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/artifact_widgets.dart';
@@ -11,16 +12,15 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Hiện vật yêu thích')),
+      appBar: AppBar(title: Text(context.l10n.favTitle)),
       body: ListenableBuilder(
         listenable: AuthController.instance,
         builder: (context, _) {
           if (!AuthController.instance.isLoggedIn) {
             return _LoginPrompt(
               icon: Icons.favorite_border,
-              title: 'Đăng nhập để lưu yêu thích',
-              message:
-                  'Đăng nhập để lưu và đồng bộ các hiện vật\nyêu thích của bạn trên mọi thiết bị',
+              title: context.l10n.favLoginTitle,
+              message: context.l10n.favLoginMessage,
             );
           }
           return _buildList();
@@ -57,19 +57,19 @@ class FavoritesScreen extends StatelessWidget {
                         size: 44, color: AppColors.accent),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'Chưa có hiện vật yêu thích',
-                    style: TextStyle(
+                  Text(
+                    context.l10n.favEmptyTitle,
+                    style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Nhấn ♥ trên hiện vật để lưu lại\nvà xem lại bất cứ lúc nào',
+                  Text(
+                    context.l10n.favEmptyMessage,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary),
                   ),
                 ],
@@ -142,7 +142,7 @@ class _LoginPrompt extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () => AuthController.ensureLoggedIn(context),
                 icon: const Icon(Icons.login, size: 20),
-                label: const Text('Đăng nhập / Đăng ký'),
+                label: Text(context.l10n.loginOrRegister),
               ),
             ),
           ],

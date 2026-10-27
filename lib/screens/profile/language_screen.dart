@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../../state/language_state.dart';
 import '../../theme/app_theme.dart';
 
@@ -16,12 +17,17 @@ class _LanguageScreenState extends State<LanguageScreen> {
 
   /// Lấy theo những ngôn ngữ backend thực sự có nội dung (`language.available`
   /// của hiện vật); chưa biết thì dùng hai thứ tiếng app có sẵn.
-  List<(String, String, String, String)> get _languages => [
+  ///
+  /// Mỗi dòng chỉ có cờ + tên gốc của ngôn ngữ (2026-10-21 bỏ dòng chú thích
+  /// bên dưới theo yêu cầu). Chọn thứ tiếng chưa có bản dịch giao diện thì vẫn
+  /// được báo sau khi xác nhận (`langUiFallbackNotice`).
+  List<(String, String, String)> get _languages => [
         for (final code in LanguageController.instance.choices)
-          switch (LanguageController.labels[code]) {
-            (final flag, final name, final sub)? => (code, flag, name, sub),
-            null => (code, '🌐', code.toUpperCase(), code),
-          },
+          (
+            code,
+            LanguageController.labels[code]?.$1 ?? '🌐',
+            LanguageController.nativeName(code),
+          ),
       ];
 
   Future<void> _confirm() async {
@@ -30,16 +36,28 @@ class _LanguageScreenState extends State<LanguageScreen> {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).pop();
-    messenger.showSnackBar(savedToAccount
-        ? const SnackBar(content: Text('Đã cập nhật ngôn ngữ hiển thị'))
-        : errorSnackBar(
-            'Đã đổi ngôn ngữ trên máy này nhưng chưa lưu được vào tài khoản.'));
+    // Giao diện vừa đổi ngôn ngữ → lấy chữ theo ngôn ngữ MỚI (appStrings), không
+    // theo context của màn sắp đóng.
+    final l10n = appStrings;
+    final language = LanguageController.instance;
+    if (!language.hasUiTranslation) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(l10n.langUiFallbackNotice(
+          LanguageController.nativeName(language.code),
+        )),
+        duration: const Duration(seconds: 6),
+      ));
+    } else {
+      messenger.showSnackBar(savedToAccount
+          ? SnackBar(content: Text(l10n.langUpdated))
+          : errorSnackBar(l10n.langSavedLocalOnly));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chọn ngôn ngữ')),
+      appBar: AppBar(title: Text(context.l10n.langScreenTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         children: [
@@ -50,13 +68,13 @@ class _LanguageScreenState extends State<LanguageScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
-              children: const [
-                Icon(Icons.translate, color: AppColors.accent, size: 22),
-                SizedBox(width: 10),
+              children: [
+                const Icon(Icons.translate, color: AppColors.accent, size: 22),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Nội dung giới thiệu, thuyết minh âm thanh và phụ đề video sẽ hiển thị theo ngôn ngữ bạn chọn.',
-                    style: TextStyle(
+                    context.l10n.langScreenIntro,
+                    style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.primaryLight,
                       height: 1.4,
@@ -67,7 +85,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          for (final (code, flag, name, sub) in _languages)
+          for (final (code, flag, name) in _languages)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: InkWell(
@@ -93,26 +111,13 @@ class _LanguageScreenState extends State<LanguageScreen> {
                       Text(flag, style: const TextStyle(fontSize: 26)),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              sub,
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                       if (_selected == code)
@@ -135,7 +140,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2.2),
                   )
-                : const Text('Xác nhận'),
+                : Text(context.l10n.confirm),
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart';
 
@@ -156,7 +157,7 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Trợ lý du lịch số cho khu di tích',
+                            context.l10n.splashTagline,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.85),
                               fontSize: 15,

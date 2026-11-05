@@ -561,6 +561,50 @@ class _BeaconLoginToListen extends StatelessWidget {
   }
 }
 
+/// Dải thuyết minh khi chưa phát được: đang tải file hoặc mở file lỗi.
+class _BeaconAudioProblem extends StatelessWidget {
+  const _BeaconAudioProblem({required this.text, this.action});
+
+  final String text;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      constraints: const BoxConstraints(minHeight: 56),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            action == null
+                ? Icons.hourglass_top_rounded
+                : Icons.error_outline_rounded,
+            color: AppColors.textSecondary,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 14.5,
+              ),
+            ),
+          ),
+          ?action,
+        ],
+      ),
+    );
+  }
+}
+
 class _BeaconAudioStatus extends StatelessWidget {
   const _BeaconAudioStatus({required this.artifact});
 
@@ -577,6 +621,27 @@ class _BeaconAudioStatus extends StatelessWidget {
         if (!artifact.hasAudio) return const _BeaconNoAudioNotice();
         if (!AuthController.instance.isLoggedIn) {
           return _BeaconLoginToListen(artifact: artifact);
+        }
+        // Báo đúng trạng thái player thay vì luôn "đang phát": file mở không
+        // được mà vẫn ghi đang phát thì khách chỉ thấy im lặng, không biết
+        // bấm gì.
+        if (controller.artifact?.id == artifact.id) {
+          if (controller.error != null) {
+            return _BeaconAudioProblem(
+              text: context.l10n.audioPlayFailed,
+              action: TextButton(
+                onPressed: () => controller.play(artifact),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  minimumSize: const Size(0, 36),
+                ),
+                child: Text(context.l10n.retry),
+              ),
+            );
+          }
+          if (controller.isLoading) {
+            return _BeaconAudioProblem(text: context.l10n.audioLoading);
+          }
         }
         final muted = controller.isMuted;
         return Container(

@@ -140,14 +140,24 @@ class AudioPlayerController extends ChangeNotifier {
     await play(queue[i - 1]);
   }
 
-  /// Mở bản thu của [next] rồi phát. Cùng hiện vật thì phát tiếp chứ không
-  /// tải lại từ đầu.
+  /// URL của file đang nạp trong player — để biết bản thu của hiện vật đã đổi.
+  String? _loadedUrl;
+
+  /// Mở bản thu của [next] rồi phát. Cùng hiện vật **và cùng file** thì phát
+  /// tiếp chứ không tải lại từ đầu.
   Future<void> play(Artifact next) async {
     // Mở một hiện vật ngoài danh sách (trang chi tiết, beacon) = thôi nghe
     // theo danh sách, khỏi hết bài lại nhảy sang bài của danh sách cũ.
     if (!queue.any((a) => a.id == next.id)) queue = const [];
-    if (artifact?.id == next.id && _player.audioSource != null) {
-      if (error != null) return;
+    // So cả URL: admin thay bản thu (vd. tạo bằng giọng máy) rồi khách kéo
+    // xuống làm mới thì id giữ nguyên mà file đã khác — trước đây player cứ
+    // phát lại file cũ (đã bị xoá) hoặc giữ lỗi cũ và im lặng tới khi kill app.
+    // Lần trước lỗi thì cũng nạp lại, để lần bấm sau là một lần thử mới.
+    if (artifact?.id == next.id &&
+        _player.audioSource != null &&
+        _loadedUrl == next.audioUrl &&
+        error == null) {
+      artifact = next;
       await _player.play();
       notifyListeners();
       return;
@@ -155,6 +165,7 @@ class AudioPlayerController extends ChangeNotifier {
 
     artifact = next;
     error = null;
+    _loadedUrl = null;
 
     if (!next.hasAudio) {
       // Không có file thì dừng hẳn — thà nói "chưa có thuyết minh" còn hơn
@@ -169,6 +180,7 @@ class AudioPlayerController extends ChangeNotifier {
     notifyListeners();
     try {
       await _player.setUrl(next.audioUrl!);
+      _loadedUrl = next.audioUrl;
       await _player.setSpeed(speed);
       await _player.setVolume(isMuted ? 0 : 1);
       isLoading = false;
@@ -202,6 +214,7 @@ class AudioPlayerController extends ChangeNotifier {
 
   void close() {
     _player.stop();
+    _loadedUrl = null;
     artifact = null;
     queue = const [];
     error = null;
